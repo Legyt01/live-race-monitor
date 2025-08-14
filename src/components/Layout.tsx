@@ -44,9 +44,13 @@ const Layout = ({ children, currentView, onViewChange, connectionStatus }: Layou
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Trophy className="h-8 w-8 text-primary" />
+              <img 
+                src="/lovable-uploads/b9529df2-0049-4b6d-8685-46c28194abe1.png" 
+                alt="MetaRobots Logo" 
+                className="h-8 w-8" 
+              />
               <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Sistema de Competencias
+                MetaRobots
               </h1>
             </div>
             <Badge variant={getStatusColor() as any} className="gap-2">
