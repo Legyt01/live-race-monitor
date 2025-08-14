@@ -1,0 +1,192 @@
+import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CATEGORIAS, JORNADAS, PARALLEL_CATEGORIES, SEQUENTIAL_CATEGORIES, TeamData, Jornada, Categoria } from '@/types/competition';
+import { Trophy, Clock, Target, Car, Ship, Zap } from 'lucide-react';
+
+interface CentralDisplayProps {
+  getTeamsForCategory: (jornada: Jornada, categoria: Categoria) => TeamData[];
+}
+
+const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
+  const getCategoryIcon = (categoria: Categoria) => {
+    switch (categoria) {
+      case 'zumo_rc':
+      case 'zumo_autonomo':
+        return Target;
+      case 'futbol_rc':
+        return Trophy;
+      case 'velocitas':
+        return Zap;
+      case 'rally':
+        return Car;
+      case 'barcos':
+        return Ship;
+      default:
+        return Trophy;
+    }
+  };
+
+  const getCategoryColor = (categoria: Categoria) => {
+    switch (categoria) {
+      case 'zumo_rc':
+      case 'zumo_autonomo':
+        return 'text-sports-blue';
+      case 'futbol_rc':
+        return 'text-sports-green';
+      case 'velocitas':
+        return 'text-sports-purple';
+      case 'rally':
+        return 'text-sports-orange';
+      case 'barcos':
+        return 'text-accent';
+      default:
+        return 'text-primary';
+    }
+  };
+
+  const renderTable = (jornada: Jornada, categoria: Categoria) => {
+    const teams = getTeamsForCategory(jornada, categoria);
+    const Icon = getCategoryIcon(categoria);
+    const colorClass = getCategoryColor(categoria);
+    
+    const getColumns = () => {
+      switch (categoria) {
+        case 'futbol_rc':
+          return ['#', 'Equipo', 'V', 'GF', 'GC', 'PTS'];
+        case 'velocitas':
+          return ['#', 'Equipo', 'Tiempo (s)'];
+        default:
+          return ['#', 'Equipo', 'Puntos'];
+      }
+    };
+
+    const renderTableCell = (team: TeamData, column: string) => {
+      switch (column) {
+        case '#':
+          return (
+            <Badge variant={team.position === 1 ? "default" : "secondary"} className="font-bold">
+              {team.position || '-'}
+            </Badge>
+          );
+        case 'Equipo':
+          return (
+            <span className={`font-medium ${!hasData(team) ? 'text-muted-foreground' : ''}`}>
+              {team.equipo.equipo_nombre}
+            </span>
+          );
+        case 'V':
+          return team.victorias || 0;
+        case 'GF':
+          return team.goles_favor || 0;
+        case 'GC':
+          return team.goles_contra || 0;
+        case 'PTS':
+          return team.pts_calculados || 0;
+        case 'Tiempo (s)':
+          return team.tiempo_s ? team.tiempo_s.toFixed(3) : '-';
+        case 'Puntos':
+          return team.puntos || 0;
+        default:
+          return '-';
+      }
+    };
+
+    const hasData = (team: TeamData) => {
+      return !!(team.puntos || team.victorias || team.tiempo_s);
+    };
+
+    return (
+      <Card key={`${jornada}_${categoria}`} className="bg-gradient-to-br from-card to-muted/20">
+        <CardHeader className="pb-3">
+          <CardTitle className={`flex items-center gap-2 ${colorClass}`}>
+            <Icon className="h-5 w-5" />
+            {CATEGORIAS[categoria]} - {JORNADAS[jornada]}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {teams.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              No hay equipos registrados
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {getColumns().map((column) => (
+                    <TableHead key={column} className="font-semibold">
+                      {column}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {teams.map((team) => (
+                  <TableRow 
+                    key={team.equipo.equipo_id}
+                    className={`${!hasData(team) ? 'opacity-60' : ''} hover:bg-muted/30 transition-colors`}
+                  >
+                    {getColumns().map((column) => (
+                      <TableCell key={column}>
+                        {renderTableCell(team, column)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          Resultados en Tiempo Real
+        </h2>
+        <p className="text-muted-foreground">
+          Seguimiento de todas las competencias
+        </p>
+      </div>
+
+      {/* Competencias en Paralelo */}
+      <div>
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <Clock className="h-5 w-5 text-primary" />
+          Competencias en Paralelo
+        </h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {PARALLEL_CATEGORIES.map(categoria => (
+            <div key={categoria} className="space-y-4">
+              {(['manana', 'tarde'] as Jornada[]).map(jornada => 
+                renderTable(jornada, categoria)
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Competencias Secuenciales */}
+      <div>
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <Trophy className="h-5 w-5 text-accent" />
+          Competencias Secuenciales
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {SEQUENTIAL_CATEGORIES.map(categoria => (
+            <div key={categoria} className="space-y-4">
+              {(['manana', 'tarde'] as Jornada[]).map(jornada => 
+                renderTable(jornada, categoria)
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CentralDisplay;

@@ -1,0 +1,99 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Monitor, Users, Trophy, Clock, Car, Ship } from 'lucide-react';
+
+interface LayoutProps {
+  children: React.ReactNode;
+  currentView: string;
+  onViewChange: (view: string) => void;
+  connectionStatus: 'disconnected' | 'connecting' | 'connected';
+}
+
+const Layout = ({ children, currentView, onViewChange, connectionStatus }: LayoutProps) => {
+  const menuItems = [
+    { id: 'central', label: 'Pantalla Central', icon: Monitor },
+    { id: 'arb1', label: 'Árbitro 1', icon: Users },
+    { id: 'arb2', label: 'Árbitro 2', icon: Users },
+    { id: 'arb3', label: 'Árbitro 3', icon: Users },
+    { id: 'arb4', label: 'Árbitro 4', icon: Users },
+    { id: 'arb5', label: 'Árbitro 5', icon: Users },
+    { id: 'arb6', label: 'Árbitro 6', icon: Users },
+  ];
+
+  const getStatusColor = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'success';
+      case 'connecting': return 'warning';
+      default: return 'destructive';
+    }
+  };
+
+  const getStatusText = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'Conectado';
+      case 'connecting': return 'Conectando...';
+      default: return 'Desconectado';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-accent/10">
+      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Trophy className="h-8 w-8 text-primary" />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Sistema de Competencias
+              </h1>
+            </div>
+            <Badge variant={getStatusColor() as any} className="gap-2">
+              <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-success-foreground' : connectionStatus === 'connecting' ? 'bg-warning-foreground animate-pulse' : 'bg-destructive-foreground'}`} />
+              {getStatusText()}
+            </Badge>
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-12 lg:col-span-3">
+            <Card className="p-4 bg-gradient-to-b from-card to-card/50">
+              <h2 className="text-lg font-semibold mb-4 text-card-foreground">Navegación</h2>
+              <nav className="space-y-2">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Button
+                      key={item.id}
+                      variant={currentView === item.id ? "default" : "ghost"}
+                      className={`w-full justify-start gap-3 ${
+                        currentView === item.id 
+                          ? 'bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg' 
+                          : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => onViewChange(item.id)}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </Button>
+                  );
+                })}
+              </nav>
+            </Card>
+          </div>
+
+          <div className="col-span-12 lg:col-span-9">
+            <Card className="p-6 bg-gradient-to-br from-card via-card/80 to-muted/20">
+              {children}
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Layout;
