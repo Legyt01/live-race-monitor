@@ -60,11 +60,12 @@ export default {
 					DEFAULT: 'hsl(var(--warning))',
 					foreground: 'hsl(var(--warning-foreground))'
 				},
-				sports: {
-					blue: 'hsl(var(--sports-blue))',
-					green: 'hsl(var(--sports-green))',
-					orange: 'hsl(var(--sports-orange))',
-					purple: 'hsl(var(--sports-purple))'
+				meta: {
+					red: 'hsl(var(--meta-red))',
+					blue: 'hsl(var(--meta-blue))',
+					orange: 'hsl(var(--meta-orange))',
+					green: 'hsl(var(--meta-green))',
+					purple: 'hsl(var(--meta-purple))'
 				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',

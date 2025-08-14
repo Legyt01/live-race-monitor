@@ -31,15 +31,15 @@ const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
     switch (categoria) {
       case 'zumo_rc':
       case 'zumo_autonomo':
-        return 'text-sports-blue';
+        return 'text-meta-red';
       case 'futbol_rc':
-        return 'text-sports-green';
+        return 'text-meta-green';
       case 'velocitas':
-        return 'text-sports-purple';
+        return 'text-meta-purple';
       case 'rally':
-        return 'text-sports-orange';
+        return 'text-meta-orange';
       case 'barcos':
-        return 'text-accent';
+        return 'text-meta-blue';
       default:
         return 'text-primary';
     }

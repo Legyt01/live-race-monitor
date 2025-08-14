@@ -24,6 +24,7 @@ const CompetitionApp = () => {
             arbitroId={currentView as ArbitroId}
             publishRoster={publishRoster}
             publishResult={publishResult}
+            getTeamsForCategory={getTeamsForCategory}
           />
         );
       default:
