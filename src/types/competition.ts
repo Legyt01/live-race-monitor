@@ -8,7 +8,6 @@ export interface Equipo {
 }
 
 export interface BaseResult {
-  jornada: Jornada;
   categoria: Categoria;
   arbitro_id: ArbitroId;
   equipo_id: string;
@@ -26,14 +25,13 @@ export interface FutbolResult extends BaseResult {
   goles_contra: number;
 }
 
-export interface VelocitasResult extends BaseResult {
+export interface TiempoResult extends BaseResult {
   tiempo_s: number;
 }
 
-export type CompetitionResult = PuntosResult | FutbolResult | VelocitasResult;
+export type CompetitionResult = PuntosResult | FutbolResult | TiempoResult;
 
 export interface RosterMessage {
-  jornada: Jornada;
   categoria: Categoria;
   equipos: Equipo[];
 }
@@ -66,7 +64,7 @@ export const CATEGORIAS: { [key in Categoria]: string } = {
   futbol_rc: 'Fútbol RC',
   velocitas: 'Velocitas',
   rally: 'Rally',
-  barcos: 'Barcos'
+  barcos: 'Barcos RC'
 };
 
 export const JORNADAS: { [key in Jornada]: string } = {
@@ -76,6 +74,9 @@ export const JORNADAS: { [key in Jornada]: string } = {
 
 export const PARALLEL_CATEGORIES: Categoria[] = ['zumo_rc', 'zumo_autonomo', 'futbol_rc', 'velocitas'];
 export const SEQUENTIAL_CATEGORIES: Categoria[] = ['rally', 'barcos'];
+
+// Categories that use time instead of points
+export const TIME_CATEGORIES: Categoria[] = ['velocitas', 'rally', 'barcos'];
 
 export const CONFIG = {
   FUTBOL_WIN_POINTS: 3,

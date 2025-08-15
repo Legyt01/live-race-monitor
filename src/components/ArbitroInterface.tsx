@@ -9,27 +9,32 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  Jornada, 
   Categoria, 
   ArbitroId, 
   CATEGORIAS, 
-  JORNADAS, 
   CompetitionResult, 
   PuntosResult, 
   FutbolResult, 
-  VelocitasResult 
+  TiempoResult,
+  TIME_CATEGORIES
 } from '@/types/competition';
-import { Plus, Send, Users, Trophy, Edit3, Target } from 'lucide-react';
+import { Plus, Send, Users, Trophy, Edit3, Target, Clock, Award } from 'lucide-react';
 
 interface ArbitroInterfaceProps {
   arbitroId: ArbitroId;
-  publishRoster: (jornada: Jornada, categoria: Categoria, equipos: { equipo_id: string; equipo_nombre: string }[]) => void;
+  publishRoster: (categoria: Categoria, equipos: { equipo_id: string; equipo_nombre: string }[]) => void;
   publishResult: (result: CompetitionResult) => void;
-  getTeamsForCategory: (jornada: Jornada, categoria: Categoria) => any[];
+  getTeamsForCategory: (categoria: Categoria) => any[];
 }
 
+// Format time as min:sec
+const formatTime = (timeInSeconds: number): string => {
+  const minutes = Math.floor(timeInSeconds / 60);
+  const seconds = (timeInSeconds % 60).toFixed(3);
+  return `${minutes}:${seconds.padStart(6, '0')}`;
+};
+
 const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsForCategory }: ArbitroInterfaceProps) => {
-  const [jornada, setJornada] = useState<Jornada>('manana');
   const [categoria, setCategoria] = useState<Categoria>('zumo_rc');
   const [equipos, setEquipos] = useState<{ equipo_id: string; equipo_nombre: string }[]>([]);
   const [newTeamId, setNewTeamId] = useState('');
@@ -46,6 +51,16 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
   const [tiempoS, setTiempoS] = useState('');
 
   const { toast } = useToast();
+
+  // Load teams from localStorage for this category
+  useEffect(() => {
+    const saved = localStorage.getItem(`teams_${categoria}`);
+    if (saved) {
+      const teams = JSON.parse(saved);
+      setEquipos(teams);
+      publishRoster(categoria, teams);
+    }
+  }, [categoria, publishRoster]);
 
   const addTeam = () => {
     if (!newTeamId.trim() || !newTeamName.trim()) {
@@ -74,8 +89,11 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
     const updatedEquipos = [...equipos, newTeam];
     setEquipos(updatedEquipos);
     
+    // Save to localStorage
+    localStorage.setItem(`teams_${categoria}`, JSON.stringify(updatedEquipos));
+    
     // Publish roster immediately
-    publishRoster(jornada, categoria, updatedEquipos);
+    publishRoster(categoria, updatedEquipos);
     
     setNewTeamId('');
     setNewTeamName('');
@@ -105,7 +123,6 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
         }
         
         result = {
-          jornada,
           categoria,
           arbitro_id: arbitroId,
           equipo_id: selectedTeam,
@@ -115,25 +132,23 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
           goles_favor: parseInt(golesFavor),
           goles_contra: parseInt(golesContra)
         } as FutbolResult;
-      } else if (categoria === 'velocitas') {
+      } else if (TIME_CATEGORIES.includes(categoria)) {
         if (!tiempoS) {
           throw new Error("El tiempo es obligatorio");
         }
         
         result = {
-          jornada,
           categoria,
           arbitro_id: arbitroId,
           equipo_id: selectedTeam,
           tiempo_s: parseFloat(tiempoS)
-        } as VelocitasResult;
+        } as TiempoResult;
       } else {
         if (!puntos) {
           throw new Error("Los puntos son obligatorios");
         }
         
         result = {
-          jornada,
           categoria,
           arbitro_id: arbitroId,
           equipo_id: selectedTeam,
@@ -166,116 +181,124 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
     }
   };
 
-  // Clear teams when changing jornada or categoria
+  // Clear teams when changing categoria
   useEffect(() => {
-    setEquipos([]);
-  }, [jornada, categoria]);
+    setSelectedTeam('');
+  }, [categoria]);
 
   // Get current teams and their results
-  const currentTeams = getTeamsForCategory(jornada, categoria);
+  const currentTeams = getTeamsForCategory(categoria);
   const hasTeams = equipos.length > 0;
 
   const renderResultForm = () => {
-    switch (categoria) {
-      case 'futbol_rc':
-        return (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="victorias">Victorias</Label>
-              <Input
-                id="victorias"
-                type="number"
-                min="0"
-                value={victorias}
-                onChange={(e) => setVictorias(e.target.value)}
-                placeholder="0"
-                className="bg-background"
-              />
-            </div>
-            <div>
-              <Label htmlFor="empates">Empates</Label>
-              <Input
-                id="empates"
-                type="number"
-                min="0"
-                value={empates}
-                onChange={(e) => setEmpates(e.target.value)}
-                placeholder="0"
-                className="bg-background"
-              />
-            </div>
-            <div>
-              <Label htmlFor="derrotas">Derrotas</Label>
-              <Input
-                id="derrotas"
-                type="number"
-                min="0"
-                value={derrotas}
-                onChange={(e) => setDerrotas(e.target.value)}
-                placeholder="0"
-                className="bg-background"
-              />
-            </div>
-            <div>
-              <Label htmlFor="goles-favor">Goles a Favor</Label>
-              <Input
-                id="goles-favor"
-                type="number"
-                min="0"
-                value={golesFavor}
-                onChange={(e) => setGolesFavor(e.target.value)}
-                placeholder="0"
-                className="bg-background"
-              />
-            </div>
-            <div className="col-span-2">
-              <Label htmlFor="goles-contra">Goles en Contra</Label>
-              <Input
-                id="goles-contra"
-                type="number"
-                min="0"
-                value={golesContra}
-                onChange={(e) => setGolesContra(e.target.value)}
-                placeholder="0"
-                className="bg-background"
-              />
-            </div>
-          </div>
-        );
-      
-      case 'velocitas':
-        return (
+    if (categoria === 'futbol_rc') {
+      return (
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="tiempo">Tiempo (segundos)</Label>
+            <Label htmlFor="victorias">Victorias</Label>
             <Input
-              id="tiempo"
-              type="number"
-              step="0.001"
-              min="0"
-              value={tiempoS}
-              onChange={(e) => setTiempoS(e.target.value)}
-              placeholder="0.000"
-              className="bg-background"
-            />
-          </div>
-        );
-      
-      default:
-        return (
-          <div>
-            <Label htmlFor="puntos">Puntos</Label>
-            <Input
-              id="puntos"
+              id="victorias"
               type="number"
               min="0"
-              value={puntos}
-              onChange={(e) => setPuntos(e.target.value)}
+              value={victorias}
+              onChange={(e) => setVictorias(e.target.value)}
               placeholder="0"
               className="bg-background"
             />
           </div>
-        );
+          <div>
+            <Label htmlFor="empates">Empates</Label>
+            <Input
+              id="empates"
+              type="number"
+              min="0"
+              value={empates}
+              onChange={(e) => setEmpates(e.target.value)}
+              placeholder="0"
+              className="bg-background"
+            />
+          </div>
+          <div>
+            <Label htmlFor="derrotas">Derrotas</Label>
+            <Input
+              id="derrotas"
+              type="number"
+              min="0"
+              value={derrotas}
+              onChange={(e) => setDerrotas(e.target.value)}
+              placeholder="0"
+              className="bg-background"
+            />
+          </div>
+          <div>
+            <Label htmlFor="goles-favor">Goles a Favor</Label>
+            <Input
+              id="goles-favor"
+              type="number"
+              min="0"
+              value={golesFavor}
+              onChange={(e) => setGolesFavor(e.target.value)}
+              placeholder="0"
+              className="bg-background"
+            />
+          </div>
+          <div className="col-span-2">
+            <Label htmlFor="goles-contra">Goles en Contra</Label>
+            <Input
+              id="goles-contra"
+              type="number"
+              min="0"
+              value={golesContra}
+              onChange={(e) => setGolesContra(e.target.value)}
+              placeholder="0"
+              className="bg-background"
+            />
+          </div>
+        </div>
+      );
     }
+    
+    if (TIME_CATEGORIES.includes(categoria)) {
+      return (
+        <div>
+          <Label htmlFor="tiempo" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Tiempo (segundos)
+          </Label>
+          <Input
+            id="tiempo"
+            type="number"
+            step="0.001"
+            min="0"
+            value={tiempoS}
+            onChange={(e) => setTiempoS(e.target.value)}
+            placeholder="0.000"
+            className="bg-background"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Se mostrará en formato min:seg
+          </p>
+        </div>
+      );
+    }
+    
+    return (
+      <div>
+        <Label htmlFor="puntos" className="flex items-center gap-2">
+          <Award className="h-4 w-4" />
+          Puntos
+        </Label>
+        <Input
+          id="puntos"
+          type="number"
+          min="0"
+          value={puntos}
+          onChange={(e) => setPuntos(e.target.value)}
+          placeholder="0"
+          className="bg-background"
+        />
+      </div>
+    );
   };
 
   const renderResultsTable = () => {
@@ -286,7 +309,9 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
         case 'futbol_rc':
           return ['Equipo', 'V', 'E', 'D', 'GF', 'GC', 'PTS'];
         case 'velocitas':
-          return ['Equipo', 'Tiempo (s)'];
+        case 'rally':
+        case 'barcos':
+          return ['Equipo', 'Tiempo'];
         default:
           return ['Equipo', 'Puntos'];
       }
@@ -308,8 +333,8 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
           return team.goles_contra || 0;
         case 'PTS':
           return team.pts_calculados || 0;
-        case 'Tiempo (s)':
-          return team.tiempo_s ? team.tiempo_s.toFixed(3) : '-';
+        case 'Tiempo':
+          return team.tiempo_s ? formatTime(team.tiempo_s) : '-';
         case 'Puntos':
           return team.puntos || 0;
         default:
@@ -370,7 +395,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
       </div>
 
       {/* Configuration Section */}
-      <Card className="bg-gradient-to-br from-meta-red/5 to-meta-blue/5 border-meta-red/20">
+      <Card className="bg-gradient-to-br from-meta-red/5 to-meta-orange/5 border-meta-red/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-meta-red" />
@@ -378,36 +403,21 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="jornada">Jornada</Label>
-              <Select value={jornada} onValueChange={(value) => setJornada(value as Jornada)}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(JORNADAS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="categoria">Categoría</Label>
-              <Select value={categoria} onValueChange={(value) => setCategoria(value as Categoria)}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(CATEGORIAS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label htmlFor="categoria">Categoría</Label>
+            <Select value={categoria} onValueChange={(value) => setCategoria(value as Categoria)}>
+              <SelectTrigger className="bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(CATEGORIAS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Badge variant="outline" className="w-fit border-meta-red text-meta-red">
-            {JORNADAS[jornada]} - {CATEGORIAS[categoria]}
+            {CATEGORIAS[categoria]}
           </Badge>
         </CardContent>
       </Card>
@@ -416,7 +426,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-meta-blue" />
+            <Plus className="h-5 w-5 text-meta-orange" />
             Gestión de Equipos
           </CardTitle>
         </CardHeader>
@@ -445,7 +455,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
             <div className="flex items-end">
               <Button 
                 onClick={addTeam} 
-                className="w-full bg-gradient-to-r from-meta-red to-meta-blue hover:from-meta-red/90 hover:to-meta-blue/90"
+                className="w-full bg-gradient-primary hover:opacity-90"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Agregar
@@ -469,10 +479,10 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
       </Card>
 
       {/* Results Submission - Always visible */}
-      <Card className="bg-gradient-to-br from-meta-blue/5 to-meta-green/5 border-meta-blue/20">
+      <Card className="bg-gradient-to-br from-meta-purple/5 to-meta-green/5 border-meta-purple/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Edit3 className="h-5 w-5 text-meta-blue" />
+            <Edit3 className="h-5 w-5 text-meta-purple" />
             Registrar Resultados
           </CardTitle>
         </CardHeader>
@@ -507,7 +517,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
               
               <Button 
                 onClick={submitResult} 
-                className="w-full bg-gradient-to-r from-meta-green to-meta-blue hover:from-meta-green/90 hover:to-meta-blue/90"
+                className="w-full bg-gradient-to-r from-meta-green to-meta-purple hover:opacity-90"
                 size="lg"
               >
                 <Send className="h-4 w-4 mr-2" />

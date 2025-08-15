@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CompetitionResult, RosterMessage, CompetitionData, TeamData, Categoria, Jornada, CONFIG } from '@/types/competition';
+import { CompetitionResult, RosterMessage, CompetitionData, TeamData, Categoria, CONFIG, TIME_CATEGORIES } from '@/types/competition';
 
 // Simulated MQTT for development - replace with actual MQTT client
 class MockMQTTClient {
@@ -60,14 +60,16 @@ export const useMQTT = () => {
           return (b.goles_favor || 0) - (a.goles_favor || 0);
           
         case 'velocitas':
-          // Order by tiempo_s descending (mayor a menor)
+        case 'rally':
+        case 'barcos':
+          // Time categories: order by time ascending (menor tiempo primero)
           if (!a.tiempo_s && !b.tiempo_s) return 0;
           if (!a.tiempo_s) return 1;
           if (!b.tiempo_s) return -1;
-          return b.tiempo_s - a.tiempo_s;
+          return a.tiempo_s - b.tiempo_s;
           
         default:
-          // Zumo RC, Zumo Autónomo, Rally, Barcos - por puntos descendente
+          // Zumo RC, Zumo Autónomo - por puntos descendente
           return (b.puntos || 0) - (a.puntos || 0);
       }
     });
@@ -81,7 +83,7 @@ export const useMQTT = () => {
   };
 
   const handleRosterMessage = (message: RosterMessage) => {
-    const key = `${message.jornada}_${message.categoria}`;
+    const key = message.categoria;
     
     setCompetitionData(prev => {
       const newData = { ...prev };
@@ -103,7 +105,7 @@ export const useMQTT = () => {
   };
 
   const handleResultUpdate = (result: CompetitionResult) => {
-    const key = `${result.jornada}_${result.categoria}`;
+    const key = result.categoria;
     
     setCompetitionData(prev => {
       const newData = { ...prev };
@@ -135,20 +137,19 @@ export const useMQTT = () => {
     });
   };
 
-  const publishRoster = (jornada: Jornada, categoria: Categoria, equipos: { equipo_id: string; equipo_nombre: string }[]) => {
-    const message: RosterMessage = { jornada, categoria, equipos };
-    const topic = `events/${jornada}/${categoria}/roster`;
+  const publishRoster = (categoria: Categoria, equipos: { equipo_id: string; equipo_nombre: string }[]) => {
+    const message: RosterMessage = { categoria, equipos };
+    const topic = `events/${categoria}/roster`;
     clientRef.current?.publish(topic, message);
   };
 
   const publishResult = (result: CompetitionResult) => {
-    const topic = `events/${result.jornada}/${result.categoria}/${result.arbitro_id}/update`;
+    const topic = `events/${result.categoria}/${result.arbitro_id}/update`;
     clientRef.current?.publish(topic, result);
   };
 
-  const getTeamsForCategory = (jornada: Jornada, categoria: Categoria): TeamData[] => {
-    const key = `${jornada}_${categoria}`;
-    const categoryData = competitionData[key] || {};
+  const getTeamsForCategory = (categoria: Categoria): TeamData[] => {
+    const categoryData = competitionData[categoria] || {};
     const teams = Object.values(categoryData);
     return sortTeams(teams, categoria);
   };
@@ -162,14 +163,12 @@ export const useMQTT = () => {
       setConnectionStatus('connected');
       
       // Subscribe to all roster topics
-      ['manana', 'tarde'].forEach(jornada => {
-        ['zumo_rc', 'zumo_autonomo', 'futbol_rc', 'velocitas', 'rally', 'barcos'].forEach(categoria => {
-          client.subscribe(`events/${jornada}/${categoria}/roster`, handleRosterMessage);
-          
-          // Subscribe to all arbitro update topics
-          ['arb1', 'arb2', 'arb3', 'arb4', 'arb5', 'arb6'].forEach(arbitro => {
-            client.subscribe(`events/${jornada}/${categoria}/${arbitro}/update`, handleResultUpdate);
-          });
+      ['zumo_rc', 'zumo_autonomo', 'futbol_rc', 'velocitas', 'rally', 'barcos'].forEach(categoria => {
+        client.subscribe(`events/${categoria}/roster`, handleRosterMessage);
+        
+        // Subscribe to all arbitro update topics
+        ['arb1', 'arb2', 'arb3', 'arb4', 'arb5', 'arb6'].forEach(arbitro => {
+          client.subscribe(`events/${categoria}/${arbitro}/update`, handleResultUpdate);
         });
       });
     });

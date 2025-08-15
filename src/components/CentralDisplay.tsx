@@ -1,12 +1,19 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CATEGORIAS, JORNADAS, PARALLEL_CATEGORIES, SEQUENTIAL_CATEGORIES, TeamData, Jornada, Categoria } from '@/types/competition';
+import { CATEGORIAS, PARALLEL_CATEGORIES, SEQUENTIAL_CATEGORIES, TeamData, Categoria, TIME_CATEGORIES } from '@/types/competition';
 import { Trophy, Clock, Target, Car, Ship, Zap } from 'lucide-react';
 
 interface CentralDisplayProps {
-  getTeamsForCategory: (jornada: Jornada, categoria: Categoria) => TeamData[];
+  getTeamsForCategory: (categoria: Categoria) => TeamData[];
 }
+
+// Format time as min:sec
+const formatTime = (timeInSeconds: number): string => {
+  const minutes = Math.floor(timeInSeconds / 60);
+  const seconds = (timeInSeconds % 60).toFixed(3);
+  return `${minutes}:${seconds.padStart(6, '0')}`;
+};
 
 const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
   const getCategoryIcon = (categoria: Categoria) => {
@@ -45,87 +52,12 @@ const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
     }
   };
 
-  // Combinar equipos de mañana y tarde para mostrar en un solo bloque
-  const getCombinedTeams = (categoria: Categoria): TeamData[] => {
-    const teamsMañana = getTeamsForCategory('manana', categoria);
-    const teamsTarde = getTeamsForCategory('tarde', categoria);
-    
-    // Crear un mapa para combinar equipos por ID
-    const combinedMap = new Map<string, TeamData>();
-    
-    // Agregar equipos de mañana
-    teamsMañana.forEach(team => {
-      combinedMap.set(team.equipo.equipo_id, { ...team });
-    });
-    
-    // Combinar/agregar equipos de tarde
-    teamsTarde.forEach(team => {
-      const existing = combinedMap.get(team.equipo.equipo_id);
-      if (existing) {
-        // Combinar datos
-        if (categoria === 'futbol_rc') {
-          existing.victorias = (existing.victorias || 0) + (team.victorias || 0);
-          existing.empates = (existing.empates || 0) + (team.empates || 0);
-          existing.derrotas = (existing.derrotas || 0) + (team.derrotas || 0);
-          existing.goles_favor = (existing.goles_favor || 0) + (team.goles_favor || 0);
-          existing.goles_contra = (existing.goles_contra || 0) + (team.goles_contra || 0);
-        } else if (categoria === 'velocitas') {
-          // Para velocitas, tomar el mejor tiempo (menor)
-          if (!existing.tiempo_s || (team.tiempo_s && team.tiempo_s < existing.tiempo_s)) {
-            existing.tiempo_s = team.tiempo_s;
-          }
-        } else {
-          // Para puntos, sumar
-          existing.puntos = (existing.puntos || 0) + (team.puntos || 0);
-        }
-      } else {
-        combinedMap.set(team.equipo.equipo_id, { ...team });
-      }
-    });
-    
-    const teams = Array.from(combinedMap.values());
-    
-    // Ordenar según la categoría
-    const sorted = [...teams].sort((a, b) => {
-      switch (categoria) {
-        case 'futbol_rc':
-          const calculateFutbolPoints = (team: TeamData): number => {
-            return (team.victorias || 0) * 3 + (team.empates || 0) * 1 + (team.derrotas || 0) * 0;
-          };
-          
-          const ptsA = calculateFutbolPoints(a);
-          const ptsB = calculateFutbolPoints(b);
-          if (ptsA !== ptsB) return ptsB - ptsA;
-          
-          const diffA = (a.goles_favor || 0) - (a.goles_contra || 0);
-          const diffB = (b.goles_favor || 0) - (b.goles_contra || 0);
-          if (diffA !== diffB) return diffB - diffA;
-          
-          return (b.goles_favor || 0) - (a.goles_favor || 0);
-          
-        case 'velocitas':
-          if (!a.tiempo_s && !b.tiempo_s) return 0;
-          if (!a.tiempo_s) return 1;
-          if (!b.tiempo_s) return -1;
-          return a.tiempo_s - b.tiempo_s; // Menor tiempo es mejor
-          
-        default:
-          return (b.puntos || 0) - (a.puntos || 0);
-      }
-    });
-
-    return sorted.map((team, index) => ({
-      ...team,
-      position: index + 1,
-      pts_calculados: categoria === 'futbol_rc' ? 
-        (team.victorias || 0) * 3 + (team.empates || 0) * 1 + (team.derrotas || 0) * 0 : undefined,
-      diferencia_gol: categoria === 'futbol_rc' ? 
-        (team.goles_favor || 0) - (team.goles_contra || 0) : undefined
-    }));
+  const getTeams = (categoria: Categoria): TeamData[] => {
+    return getTeamsForCategory(categoria);
   };
 
-  const renderCombinedTable = (categoria: Categoria) => {
-    const teams = getCombinedTeams(categoria);
+  const renderTable = (categoria: Categoria) => {
+    const teams = getTeams(categoria);
     const Icon = getCategoryIcon(categoria);
     const colorClass = getCategoryColor(categoria);
     
@@ -134,7 +66,9 @@ const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
         case 'futbol_rc':
           return ['#', 'Equipo', 'V', 'GF', 'GC', 'PTS'];
         case 'velocitas':
-          return ['#', 'Equipo', 'Tiempo (s)'];
+        case 'rally':
+        case 'barcos':
+          return ['#', 'Equipo', 'Tiempo'];
         default:
           return ['#', 'Equipo', 'Puntos'];
       }
@@ -162,8 +96,8 @@ const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
           return team.goles_contra || 0;
         case 'PTS':
           return team.pts_calculados || 0;
-        case 'Tiempo (s)':
-          return team.tiempo_s ? team.tiempo_s.toFixed(3) : '-';
+        case 'Tiempo':
+          return team.tiempo_s ? formatTime(team.tiempo_s) : '-';
         case 'Puntos':
           return team.puntos || 0;
         default:
@@ -238,8 +172,8 @@ const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
           Competencias MetaRobots
         </h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {PARALLEL_CATEGORIES.map(categoria => renderCombinedTable(categoria))}
-          {SEQUENTIAL_CATEGORIES.map(categoria => renderCombinedTable(categoria))}
+          {PARALLEL_CATEGORIES.map(categoria => renderTable(categoria))}
+          {SEQUENTIAL_CATEGORIES.map(categoria => renderTable(categoria))}
         </div>
       </div>
     </div>
