@@ -20,6 +20,16 @@ import {
 } from '@/types/competition';
 import { Plus, Send, Users, Trophy, Edit3, Target, Clock, Award } from 'lucide-react';
 
+// Mapeo fijo de árbitros a categorías
+const ARBITRO_CATEGORIA_MAP: { [key in ArbitroId]: Categoria } = {
+  arb1: 'zumo_rc',
+  arb2: 'zumo_autonomo', 
+  arb3: 'futbol_rc',
+  arb4: 'velocitas',
+  arb5: 'rally',
+  arb6: 'barcos'
+};
+
 interface ArbitroInterfaceProps {
   arbitroId: ArbitroId;
   publishRoster: (categoria: Categoria, equipos: { equipo_id: string; equipo_nombre: string }[]) => void;
@@ -35,7 +45,8 @@ const formatTime = (timeInSeconds: number): string => {
 };
 
 const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsForCategory }: ArbitroInterfaceProps) => {
-  const [categoria, setCategoria] = useState<Categoria>('zumo_rc');
+  // La categoría está fija según el árbitro
+  const categoria = ARBITRO_CATEGORIA_MAP[arbitroId];
   const [equipos, setEquipos] = useState<{ equipo_id: string; equipo_nombre: string }[]>([]);
   const [newTeamId, setNewTeamId] = useState('');
   const [newTeamName, setNewTeamName] = useState('');
@@ -180,11 +191,6 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
       });
     }
   };
-
-  // Clear teams when changing categoria
-  useEffect(() => {
-    setSelectedTeam('');
-  }, [categoria]);
 
   // Get current teams and their results
   const currentTeams = getTeamsForCategory(categoria);
@@ -346,7 +352,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-meta-red" />
+            <Target className="h-5 w-5 text-primary" />
             Resultados Actuales - {CATEGORIAS[categoria]}
           </CardTitle>
         </CardHeader>
@@ -388,35 +394,22 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
-          <Users className="h-6 w-6 text-meta-red" />
-          {arbitroId.toUpperCase()} - Panel de Control
+          <Users className="h-6 w-6 text-primary" />
+          {arbitroId.toUpperCase()} - {CATEGORIAS[categoria]}
         </h2>
         <p className="text-muted-foreground">Gestiona equipos y registra resultados en tiempo real</p>
       </div>
 
-      {/* Configuration Section */}
-      <Card className="bg-gradient-to-br from-meta-red/5 to-meta-orange/5 border-meta-red/20">
+      {/* Category Display */}
+      <Card className="bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-meta-red" />
-            Configuración de Competencia
+            <Trophy className="h-5 w-5 text-primary" />
+            Categoría Asignada
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="categoria">Categoría</Label>
-            <Select value={categoria} onValueChange={(value) => setCategoria(value as Categoria)}>
-              <SelectTrigger className="bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(CATEGORIAS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Badge variant="outline" className="w-fit border-meta-red text-meta-red">
+        <CardContent>
+          <Badge variant="outline" className="w-fit border-primary text-primary text-lg px-4 py-2">
             {CATEGORIAS[categoria]}
           </Badge>
         </CardContent>
@@ -426,7 +419,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-meta-orange" />
+            <Plus className="h-5 w-5 text-accent" />
             Gestión de Equipos
           </CardTitle>
         </CardHeader>
@@ -455,7 +448,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
             <div className="flex items-end">
               <Button 
                 onClick={addTeam} 
-                className="w-full bg-gradient-primary hover:opacity-90"
+                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Agregar
@@ -468,7 +461,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
               <Label>Equipos Registrados ({equipos.length})</Label>
               <div className="flex flex-wrap gap-2 mt-2">
                 {equipos.map((equipo) => (
-                  <Badge key={equipo.equipo_id} variant="secondary" className="bg-meta-red/10 text-meta-red border-meta-red/20">
+                  <Badge key={equipo.equipo_id} variant="secondary" className="bg-primary/10 text-primary border-primary/20">
                     {equipo.equipo_nombre}
                   </Badge>
                 ))}
@@ -479,10 +472,10 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
       </Card>
 
       {/* Results Submission - Always visible */}
-      <Card className="bg-gradient-to-br from-meta-purple/5 to-meta-green/5 border-meta-purple/20">
+      <Card className="bg-gradient-to-br from-accent/5 to-secondary/5 border-accent/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Edit3 className="h-5 w-5 text-meta-purple" />
+            <Edit3 className="h-5 w-5 text-accent" />
             Registrar Resultados
           </CardTitle>
         </CardHeader>
@@ -517,7 +510,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
               
               <Button 
                 onClick={submitResult} 
-                className="w-full bg-gradient-to-r from-meta-green to-meta-purple hover:opacity-90"
+                className="w-full bg-gradient-to-r from-accent to-primary hover:opacity-90"
                 size="lg"
               >
                 <Send className="h-4 w-4 mr-2" />

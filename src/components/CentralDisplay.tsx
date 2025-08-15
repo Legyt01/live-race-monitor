@@ -37,8 +37,9 @@ const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
   const getCategoryColor = (categoria: Categoria) => {
     switch (categoria) {
       case 'zumo_rc':
+        return 'text-primary';
       case 'zumo_autonomo':
-        return 'text-meta-red';
+        return 'text-accent';
       case 'futbol_rc':
         return 'text-meta-green';
       case 'velocitas':
@@ -157,8 +158,8 @@ const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Resultados en Tiempo Real
+        <h2 className="text-3xl font-bold mb-2 text-primary">
+          MetaRobots - Resultados en Tiempo Real
         </h2>
         <p className="text-muted-foreground">
           Seguimiento de todas las competencias MetaRobots
@@ -169,7 +170,7 @@ const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
       <div>
         <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
           <Trophy className="h-5 w-5 text-primary" />
-          Competencias MetaRobots
+          Competencias en Vivo
         </h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {PARALLEL_CATEGORIES.map(categoria => renderTable(categoria))}

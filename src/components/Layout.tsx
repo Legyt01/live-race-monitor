@@ -14,12 +14,12 @@ interface LayoutProps {
 const Layout = ({ children, currentView, onViewChange, connectionStatus }: LayoutProps) => {
   const menuItems = [
     { id: 'central', label: 'Pantalla Central', icon: Monitor },
-    { id: 'arb1', label: 'Árbitro 1', icon: Users },
-    { id: 'arb2', label: 'Árbitro 2', icon: Users },
-    { id: 'arb3', label: 'Árbitro 3', icon: Users },
-    { id: 'arb4', label: 'Árbitro 4', icon: Users },
-    { id: 'arb5', label: 'Árbitro 5', icon: Users },
-    { id: 'arb6', label: 'Árbitro 6', icon: Users },
+    { id: 'arb1', label: 'Árbitro 1 - Zumo RC', icon: Users, category: 'zumo_rc' },
+    { id: 'arb2', label: 'Árbitro 2 - Zumo Autónomo', icon: Users, category: 'zumo_autonomo' },
+    { id: 'arb3', label: 'Árbitro 3 - Fútbol RC', icon: Trophy, category: 'futbol_rc' },
+    { id: 'arb4', label: 'Árbitro 4 - Velocitas', icon: Clock, category: 'velocitas' },
+    { id: 'arb5', label: 'Árbitro 5 - Rally', icon: Car, category: 'rally' },
+    { id: 'arb6', label: 'Árbitro 6 - Barcos RC', icon: Ship, category: 'barcos' },
   ];
 
   const getStatusColor = () => {
@@ -49,7 +49,7 @@ const Layout = ({ children, currentView, onViewChange, connectionStatus }: Layou
                 alt="MetaRobots Logo" 
                 className="h-8 w-8" 
               />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold text-primary">
                 MetaRobots
               </h1>
             </div>
