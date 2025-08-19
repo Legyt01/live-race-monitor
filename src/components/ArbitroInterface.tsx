@@ -18,7 +18,7 @@ import {
   TiempoResult,
   TIME_CATEGORIES
 } from '@/types/competition';
-import { Plus, Send, Users, Trophy, Edit3, Target, Clock, Award } from 'lucide-react';
+import { Plus, Send, Users, Trophy, Edit3, Target, Clock, Award, Trash2 } from 'lucide-react';
 
 // Mapeo fijo de árbitros a categorías
 const ARBITRO_CATEGORIA_MAP: { [key in ArbitroId]: Categoria } = {
@@ -112,6 +112,30 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
     toast({
       title: "Equipo agregado",
       description: `${newTeam.equipo_nombre} agregado exitosamente`
+    });
+  };
+
+  const deleteTeam = (teamId: string) => {
+    const teamToDelete = equipos.find(e => e.equipo_id === teamId);
+    if (!teamToDelete) return;
+
+    const updatedEquipos = equipos.filter(e => e.equipo_id !== teamId);
+    setEquipos(updatedEquipos);
+    
+    // Save to localStorage
+    localStorage.setItem(`teams_${categoria}`, JSON.stringify(updatedEquipos));
+    
+    // Publish updated roster
+    publishRoster(categoria, updatedEquipos);
+    
+    // Clear selection if deleted team was selected
+    if (selectedTeam === teamId) {
+      setSelectedTeam('');
+    }
+    
+    toast({
+      title: "Equipo eliminado",
+      description: `${teamToDelete.equipo_nombre} eliminado exitosamente`
     });
   };
 
@@ -461,9 +485,19 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
               <Label>Equipos Registrados ({equipos.length})</Label>
               <div className="flex flex-wrap gap-2 mt-2">
                 {equipos.map((equipo) => (
-                  <Badge key={equipo.equipo_id} variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                    {equipo.equipo_nombre}
-                  </Badge>
+                  <div key={equipo.equipo_id} className="flex items-center gap-1">
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                      {equipo.equipo_nombre}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
+                      onClick={() => deleteTeam(equipo.equipo_id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 ))}
               </div>
             </div>

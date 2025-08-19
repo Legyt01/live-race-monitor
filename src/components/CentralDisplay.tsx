@@ -1,12 +1,16 @@
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { CATEGORIAS, PARALLEL_CATEGORIES, SEQUENTIAL_CATEGORIES, TeamData, Categoria, TIME_CATEGORIES } from '@/types/competition';
-import { Trophy, Clock, Target, Car, Ship, Zap } from 'lucide-react';
+import { Trophy, Clock, Target, Car, Ship, Zap, Play, Pause, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CentralDisplayProps {
   getTeamsForCategory: (categoria: Categoria) => TeamData[];
 }
+
+const ALL_CATEGORIES = [...PARALLEL_CATEGORIES, ...SEQUENTIAL_CATEGORIES];
 
 // Format time as min:sec
 const formatTime = (timeInSeconds: number): string => {
@@ -16,6 +20,28 @@ const formatTime = (timeInSeconds: number): string => {
 };
 
 const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
+  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
+  const [isAutoRotating, setIsAutoRotating] = useState(true);
+  const [showAllCategories, setShowAllCategories] = useState(false);
+
+  // Auto-rotate through categories every 10 seconds
+  useEffect(() => {
+    if (!isAutoRotating || showAllCategories) return;
+
+    const interval = setInterval(() => {
+      setCurrentCategoryIndex((prev) => (prev + 1) % ALL_CATEGORIES.length);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isAutoRotating, showAllCategories]);
+
+  const nextCategory = () => {
+    setCurrentCategoryIndex((prev) => (prev + 1) % ALL_CATEGORIES.length);
+  };
+
+  const prevCategory = () => {
+    setCurrentCategoryIndex((prev) => (prev - 1 + ALL_CATEGORIES.length) % ALL_CATEGORIES.length);
+  };
   const getCategoryIcon = (categoria: Categoria) => {
     switch (categoria) {
       case 'zumo_rc':
@@ -166,16 +192,86 @@ const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
         </p>
       </div>
 
-      {/* Todas las competencias como bloques únicos */}
-      <div>
-        <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-primary" />
-          Competencias en Vivo
-        </h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {PARALLEL_CATEGORIES.map(categoria => renderTable(categoria))}
-          {SEQUENTIAL_CATEGORIES.map(categoria => renderTable(categoria))}
+      {/* Controls */}
+      <div className="flex justify-center items-center gap-4">
+        <Button
+          variant="outline"
+          onClick={() => setShowAllCategories(!showAllCategories)}
+          className="bg-background"
+        >
+          {showAllCategories ? 'Vista Individual' : 'Vista Completa'}
+        </Button>
+        
+        {!showAllCategories && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={prevCategory}
+              className="bg-background"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant="ghost"
+              onClick={() => setIsAutoRotating(!isAutoRotating)}
+              className="bg-background flex items-center gap-2"
+            >
+              {isAutoRotating ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              {isAutoRotating ? 'Pausar' : 'Auto'}
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={nextCategory}
+              className="bg-background"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </>
+        )}
+      </div>
+
+      {/* Category indicator */}
+      {!showAllCategories && (
+        <div className="flex justify-center">
+          <div className="flex gap-2">
+            {ALL_CATEGORIES.map((categoria, index) => (
+              <button
+                key={categoria}
+                onClick={() => setCurrentCategoryIndex(index)}
+                className={`w-3 h-3 rounded-full transition-all ${
+                  index === currentCategoryIndex 
+                    ? 'bg-primary scale-125' 
+                    : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                }`}
+              />
+            ))}
+          </div>
         </div>
+      )}
+
+      {/* Competition Display */}
+      <div>
+        {showAllCategories ? (
+          <>
+            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-primary" />
+              Todas las Competencias
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {ALL_CATEGORIES.map(categoria => renderTable(categoria))}
+            </div>
+          </>
+        ) : (
+          <div className="flex justify-center">
+            <div className="w-full max-w-4xl">
+              {renderTable(ALL_CATEGORIES[currentCategoryIndex])}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
