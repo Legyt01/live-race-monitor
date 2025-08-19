@@ -14,8 +14,8 @@ interface LayoutProps {
 const Layout = ({ children, currentView, onViewChange, connectionStatus }: LayoutProps) => {
   const menuItems = [
     { id: 'central', label: 'Pantalla Central', icon: Monitor },
-    { id: 'arb1', label: 'Árbitro 1 - Zumo RC', icon: Users, category: 'zumo_rc' },
-    { id: 'arb2', label: 'Árbitro 2 - Zumo Autónomo', icon: Users, category: 'zumo_autonomo' },
+    { id: 'arb1', label: 'Árbitro 1 - Sumo RC', icon: Users, category: 'sumo_rc' },
+    { id: 'arb2', label: 'Árbitro 2 - Sumo Autónomo', icon: Users, category: 'sumo_autonomo' },
     { id: 'arb3', label: 'Árbitro 3 - Fútbol RC', icon: Trophy, category: 'futbol_rc' },
     { id: 'arb4', label: 'Árbitro 4 - Velocitas', icon: Clock, category: 'velocitas' },
     { id: 'arb5', label: 'Árbitro 5 - Rally', icon: Car, category: 'rally' },
