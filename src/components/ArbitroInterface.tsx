@@ -22,8 +22,8 @@ import { Plus, Send, Users, Trophy, Edit3, Target, Clock, Award, Trash2 } from '
 
 // Mapeo fijo de árbitros a categorías
 const ARBITRO_CATEGORIA_MAP: { [key in ArbitroId]: Categoria } = {
-  arb1: 'zumo_rc',
-  arb2: 'zumo_autonomo', 
+  arb1: 'sumo_rc',
+  arb2: 'sumo_autonomo', 
   arb3: 'futbol_rc',
   arb4: 'velocitas',
   arb5: 'rally',

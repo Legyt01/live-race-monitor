@@ -44,8 +44,8 @@ const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
   };
   const getCategoryIcon = (categoria: Categoria) => {
     switch (categoria) {
-      case 'zumo_rc':
-      case 'zumo_autonomo':
+      case 'sumo_rc':
+      case 'sumo_autonomo':
         return Target;
       case 'futbol_rc':
         return Trophy;
@@ -62,9 +62,9 @@ const CentralDisplay = ({ getTeamsForCategory }: CentralDisplayProps) => {
 
   const getCategoryColor = (categoria: Categoria) => {
     switch (categoria) {
-      case 'zumo_rc':
+      case 'sumo_rc':
         return 'text-primary';
-      case 'zumo_autonomo':
+      case 'sumo_autonomo':
         return 'text-accent';
       case 'futbol_rc':
         return 'text-meta-green';

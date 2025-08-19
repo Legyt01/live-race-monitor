@@ -1,5 +1,5 @@
 export type Jornada = 'manana' | 'tarde';
-export type Categoria = 'zumo_rc' | 'zumo_autonomo' | 'futbol_rc' | 'velocitas' | 'rally' | 'barcos';
+export type Categoria = 'sumo_rc' | 'sumo_autonomo' | 'futbol_rc' | 'velocitas' | 'rally' | 'barcos';
 export type ArbitroId = 'arb1' | 'arb2' | 'arb3' | 'arb4' | 'arb5' | 'arb6';
 
 export interface Equipo {
@@ -59,8 +59,8 @@ export interface CompetitionData {
 }
 
 export const CATEGORIAS: { [key in Categoria]: string } = {
-  zumo_rc: 'Zumo RC',
-  zumo_autonomo: 'Zumo Autónomo',
+  sumo_rc: 'Sumo RC',
+  sumo_autonomo: 'Sumo Autónomo',
   futbol_rc: 'Fútbol RC',
   velocitas: 'Velocitas',
   rally: 'Rally',
@@ -72,7 +72,7 @@ export const JORNADAS: { [key in Jornada]: string } = {
   tarde: 'Tarde'
 };
 
-export const PARALLEL_CATEGORIES: Categoria[] = ['zumo_rc', 'zumo_autonomo', 'futbol_rc', 'velocitas'];
+export const PARALLEL_CATEGORIES: Categoria[] = ['sumo_rc', 'sumo_autonomo', 'futbol_rc', 'velocitas'];
 export const SEQUENTIAL_CATEGORIES: Categoria[] = ['rally', 'barcos'];
 
 // Categories that use time instead of points

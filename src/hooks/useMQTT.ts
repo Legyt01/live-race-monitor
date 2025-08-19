@@ -69,7 +69,7 @@ export const useMQTT = () => {
           return a.tiempo_s - b.tiempo_s;
           
         default:
-          // Zumo RC, Zumo Autónomo - por puntos descendente
+          // Sumo RC, Sumo Autónomo - por puntos descendente
           return (b.puntos || 0) - (a.puntos || 0);
       }
     });
@@ -163,7 +163,7 @@ export const useMQTT = () => {
       setConnectionStatus('connected');
       
       // Subscribe to all roster topics
-      ['zumo_rc', 'zumo_autonomo', 'futbol_rc', 'velocitas', 'rally', 'barcos'].forEach(categoria => {
+      ['sumo_rc', 'sumo_autonomo', 'futbol_rc', 'velocitas', 'rally', 'barcos'].forEach(categoria => {
         client.subscribe(`events/${categoria}/roster`, handleRosterMessage);
         
         // Subscribe to all arbitro update topics
