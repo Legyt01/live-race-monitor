@@ -32,8 +32,8 @@ const ARBITRO_CATEGORIA_MAP: { [key in ArbitroId]: Categoria } = {
 
 interface ArbitroInterfaceProps {
   arbitroId: ArbitroId;
-  publishRoster: (categoria: Categoria, equipos: { equipo_id: string; equipo_nombre: string }[]) => void;
-  publishResult: (result: CompetitionResult) => void;
+  publishRoster: (categoria: Categoria, equipos: { equipo_id: string; equipo_nombre: string }[], arbitroId?: string) => void;
+  publishResult: (result: CompetitionResult, arbitroId?: string) => void;
   getTeamsForCategory: (categoria: Categoria) => any[];
 }
 
@@ -69,7 +69,10 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
     if (saved) {
       const teams = JSON.parse(saved);
       setEquipos(teams);
-      publishRoster(categoria, teams);
+      publishRoster(categoria, teams, arbitroId);
+      console.log(`Cargados ${teams.length} equipos para ${categoria} - ${arbitroId}`, teams);
+    } else {
+      console.log(`No hay equipos guardados para ${categoria} - ${arbitroId}`);
     }
   }, [categoria, arbitroId, publishRoster]);
 
@@ -104,7 +107,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
     localStorage.setItem(`teams_${categoria}_${arbitroId}`, JSON.stringify(updatedEquipos));
     
     // Publish roster immediately
-    publishRoster(categoria, updatedEquipos);
+    publishRoster(categoria, updatedEquipos, arbitroId);
     
     setNewTeamId('');
     setNewTeamName('');
@@ -126,7 +129,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
     localStorage.setItem(`teams_${categoria}_${arbitroId}`, JSON.stringify(updatedEquipos));
     
     // Publish updated roster
-    publishRoster(categoria, updatedEquipos);
+    publishRoster(categoria, updatedEquipos, arbitroId);
     
     // Clear selection if deleted team was selected
     if (selectedTeam === teamId) {
@@ -191,7 +194,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
         } as PuntosResult;
       }
 
-      publishResult(result);
+      publishResult(result, arbitroId);
       
       // Clear form
       setPuntos('');
