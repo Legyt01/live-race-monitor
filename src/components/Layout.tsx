@@ -8,7 +8,7 @@ interface LayoutProps {
   children: React.ReactNode;
   currentView: string;
   onViewChange: (view: string) => void;
-  connectionStatus: 'disconnected' | 'connecting' | 'connected';
+  connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
 }
 
 const Layout = ({ children, currentView, onViewChange, connectionStatus }: LayoutProps) => {

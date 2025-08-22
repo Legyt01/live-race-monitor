@@ -26,7 +26,7 @@ All colors MUST be HSL.
     --muted: 220 40% 96%;
     --muted-foreground: 220 15% 45%;
 
-    --accent: 25 95% 53%;
+    --accent: 4 85% 58%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 85% 60%;
@@ -44,13 +44,13 @@ All colors MUST be HSL.
 
     --meta-red: 4 85% 58%;
     --meta-blue: 220 85% 55%;
-    --meta-orange: 25 95% 53%;
+    --meta-orange: 4 85% 58%;
     --meta-green: 142 76% 36%;
     --meta-purple: 262 52% 47%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(var(--meta-red)), hsl(var(--meta-orange)));
+    --gradient-primary: linear-gradient(135deg, hsl(var(--meta-red)), hsl(var(--meta-red) / 0.8));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100% / 0.9), hsl(220 40% 98%));
-    --gradient-tech: linear-gradient(90deg, hsl(var(--meta-red) / 0.1), hsl(var(--meta-orange) / 0.1));
+    --gradient-tech: linear-gradient(90deg, hsl(var(--meta-red) / 0.1), hsl(var(--meta-red) / 0.05));
 
     --radius: 0.5rem;
 

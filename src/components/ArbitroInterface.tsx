@@ -63,15 +63,15 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
 
   const { toast } = useToast();
 
-  // Load teams from localStorage for this category
+  // Load teams from localStorage for this category and arbitro
   useEffect(() => {
-    const saved = localStorage.getItem(`teams_${categoria}`);
+    const saved = localStorage.getItem(`teams_${categoria}_${arbitroId}`);
     if (saved) {
       const teams = JSON.parse(saved);
       setEquipos(teams);
       publishRoster(categoria, teams);
     }
-  }, [categoria, publishRoster]);
+  }, [categoria, arbitroId, publishRoster]);
 
   const addTeam = () => {
     if (!newTeamId.trim() || !newTeamName.trim()) {
@@ -100,8 +100,8 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
     const updatedEquipos = [...equipos, newTeam];
     setEquipos(updatedEquipos);
     
-    // Save to localStorage
-    localStorage.setItem(`teams_${categoria}`, JSON.stringify(updatedEquipos));
+    // Save to localStorage with arbitro isolation
+    localStorage.setItem(`teams_${categoria}_${arbitroId}`, JSON.stringify(updatedEquipos));
     
     // Publish roster immediately
     publishRoster(categoria, updatedEquipos);
@@ -122,8 +122,8 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
     const updatedEquipos = equipos.filter(e => e.equipo_id !== teamId);
     setEquipos(updatedEquipos);
     
-    // Save to localStorage
-    localStorage.setItem(`teams_${categoria}`, JSON.stringify(updatedEquipos));
+    // Save to localStorage with arbitro isolation
+    localStorage.setItem(`teams_${categoria}_${arbitroId}`, JSON.stringify(updatedEquipos));
     
     // Publish updated roster
     publishRoster(categoria, updatedEquipos);

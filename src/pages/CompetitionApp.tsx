@@ -2,12 +2,12 @@ import { useState } from 'react';
 import Layout from '@/components/Layout';
 import CentralDisplay from '@/components/CentralDisplay';
 import ArbitroInterface from '@/components/ArbitroInterface';
-import { useMQTT } from '@/hooks/useMQTT';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { ArbitroId } from '@/types/competition';
 
 const CompetitionApp = () => {
   const [currentView, setCurrentView] = useState('central');
-  const { connectionStatus, publishRoster, publishResult, getTeamsForCategory } = useMQTT();
+  const { connectionStatus, publishRoster, publishResult, getTeamsForCategory } = useWebSocket();
 
   const renderContent = () => {
     switch (currentView) {
