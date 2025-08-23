@@ -29,37 +29,64 @@ export const useArbitroData = (arbitroId: ArbitroId): ArbitroDataHookReturn => {
   const [equipos, setEquipos] = useState<{ equipo_id: string; equipo_nombre: string }[]>([]);
   const [updateTrigger, setUpdateTrigger] = useState(0);
 
-  // Cargar equipos desde localStorage
+  // Cargar equipos desde localStorage - SOLO para esta categoría específica
   const loadTeams = useCallback(() => {
     const teamsKey = `teams_${categoria}_${arbitroId}`;
     const saved = localStorage.getItem(teamsKey);
+    
+    // Verificar que el árbitro esté autorizado para esta categoría
+    if (ARBITRO_CATEGORIA[arbitroId] !== categoria) {
+      console.error(`Árbitro ${arbitroId} no autorizado para categoría ${categoria}`);
+      setEquipos([]);
+      return;
+    }
+    
     if (saved) {
       const teams = JSON.parse(saved);
       setEquipos(teams);
-      console.log(`Cargados ${teams.length} equipos para ${categoria} - ${arbitroId}`, teams);
+      console.log(`[${categoria}] Cargados ${teams.length} equipos para ${arbitroId}:`, teams);
     } else {
       setEquipos([]);
-      console.log(`No hay equipos guardados para ${categoria} - ${arbitroId}`);
+      console.log(`[${categoria}] No hay equipos guardados para ${arbitroId}`);
     }
   }, [categoria, arbitroId]);
 
-  // Agregar equipo
+  // Agregar equipo - SOLO para esta categoría específica
   const addTeam = useCallback((equipo: { equipo_id: string; equipo_nombre: string }) => {
+    // Verificar autorización
+    if (ARBITRO_CATEGORIA[arbitroId] !== categoria) {
+      console.error(`Árbitro ${arbitroId} no autorizado para categoría ${categoria}`);
+      return;
+    }
+    
     setEquipos(prev => {
+      // Verificar que el equipo no exista ya en esta categoría
+      if (prev.some(e => e.equipo_id === equipo.equipo_id)) {
+        console.warn(`Equipo ${equipo.equipo_id} ya existe en ${categoria}`);
+        return prev;
+      }
+      
       const updated = [...prev, equipo];
       localStorage.setItem(`teams_${categoria}_${arbitroId}`, JSON.stringify(updated));
+      console.log(`[${categoria}] Equipo agregado:`, equipo);
       return updated;
     });
     setUpdateTrigger(prev => prev + 1);
   }, [categoria, arbitroId]);
 
-  // Eliminar equipo
+  // Eliminar equipo - SOLO de esta categoría específica
   const deleteTeam = useCallback((equipoId: string) => {
+    // Verificar autorización
+    if (ARBITRO_CATEGORIA[arbitroId] !== categoria) {
+      console.error(`Árbitro ${arbitroId} no autorizado para categoría ${categoria}`);
+      return;
+    }
+    
     setEquipos(prev => {
       const updated = prev.filter(e => e.equipo_id !== equipoId);
       localStorage.setItem(`teams_${categoria}_${arbitroId}`, JSON.stringify(updated));
       
-      // También eliminar resultados del equipo
+      // También eliminar resultados del equipo de esta categoría específica
       const resultsKey = `results_${categoria}_${arbitroId}`;
       const existingResults = localStorage.getItem(resultsKey);
       if (existingResults) {
@@ -68,6 +95,7 @@ export const useArbitroData = (arbitroId: ArbitroId): ArbitroDataHookReturn => {
         localStorage.setItem(resultsKey, JSON.stringify(results));
       }
       
+      console.log(`[${categoria}] Equipo eliminado: ${equipoId}`);
       return updated;
     });
     setUpdateTrigger(prev => prev + 1);

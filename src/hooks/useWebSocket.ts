@@ -108,45 +108,69 @@ export const useWebSocket = (): WebSocketHookReturn => {
   }, []);
 
   const loadLocalData = useCallback(() => {
-    // Cargar datos desde localStorage combinando todos los árbitros
+    // Cargar datos desde localStorage - SOLO del árbitro asignado a cada categoría
     const categories: Categoria[] = ['sumo_rc', 'sumo_autonomo', 'futbol_rc', 'velocitas', 'rally', 'barcos'];
-    const arbitroIds = ['arb1', 'arb2', 'arb3', 'arb4', 'arb5', 'arb6'];
+    const arbitroCategoria: { [key: string]: Categoria } = {
+      'arb1': 'sumo_rc',
+      'arb2': 'sumo_autonomo', 
+      'arb3': 'futbol_rc',
+      'arb4': 'velocitas',
+      'arb5': 'rally',
+      'arb6': 'barcos'
+    };
     const localData: CompetitionData = {};
 
     categories.forEach(categoria => {
       const key = `tarde_${categoria}`;
       localData[key] = {};
       
-      // Cargar equipos de TODOS los árbitros para esta categoría
-      arbitroIds.forEach(arbitroId => {
-        const teamsData = localStorage.getItem(`teams_${categoria}_${arbitroId}`);
-        const resultsData = localStorage.getItem(`results_${categoria}_${arbitroId}`);
+      // Buscar SOLO el árbitro asignado a esta categoría específica
+      const arbitroAsignado = Object.keys(arbitroCategoria).find(arb => arbitroCategoria[arb] === categoria);
+      
+      if (arbitroAsignado) {
+        const teamsData = localStorage.getItem(`teams_${categoria}_${arbitroAsignado}`);
+        const resultsData = localStorage.getItem(`results_${categoria}_${arbitroAsignado}`);
         
         if (teamsData) {
           const teams = JSON.parse(teamsData);
           const results = resultsData ? JSON.parse(resultsData) : {};
           
-          // Agregar equipos de este árbitro
+          // Agregar equipos SOLO del árbitro asignado a esta categoría
           teams.forEach((team: any) => {
-            localData[key][`${team.equipo_id}_${arbitroId}`] = {
+            localData[key][team.equipo_id] = {
               equipo: team,
               puntos: 0,
               position: 0,
-              arbitroId,
+              arbitroId: arbitroAsignado,
               ...results[team.equipo_id] // Aplicar resultados si existen
             };
           });
         }
-      });
+      }
     });
 
     setCompetitionData(localData);
-    console.log('Datos locales cargados de todos los árbitros:', localData);
+    console.log('Datos locales cargados por categoría específica:', localData);
   }, []);
 
   const handleRosterMessage = useCallback((message: RosterMessage & { arbitroId?: string }) => {
     const key = `tarde_${message.categoria}`;
     const arbitroId = message.arbitroId || 'unknown';
+    
+    // Verificar que el árbitro esté autorizado para esta categoría
+    const arbitroCategoria: { [key: string]: Categoria } = {
+      'arb1': 'sumo_rc',
+      'arb2': 'sumo_autonomo', 
+      'arb3': 'futbol_rc',
+      'arb4': 'velocitas',
+      'arb5': 'rally',
+      'arb6': 'barcos'
+    };
+    
+    if (arbitroCategoria[arbitroId] !== message.categoria) {
+      console.warn(`Árbitro ${arbitroId} no autorizado para categoría ${message.categoria}`);
+      return;
+    }
     
     setCompetitionData(prev => {
       const updated = { ...prev };
@@ -155,17 +179,12 @@ export const useWebSocket = (): WebSocketHookReturn => {
         updated[key] = {};
       }
 
-      // Limpiar equipos existentes de este árbitro específico
-      Object.keys(updated[key]).forEach(teamKey => {
-        if (teamKey.endsWith(`_${arbitroId}`)) {
-          delete updated[key][teamKey];
-        }
-      });
+      // Limpiar TODOS los equipos de esta categoría (solo debe haber un árbitro por categoría)
+      updated[key] = {};
 
-      // Agregar nuevos equipos de este árbitro
+      // Agregar equipos del árbitro autorizado
       message.equipos.forEach(equipo => {
-        const teamKey = `${equipo.equipo_id}_${arbitroId}`;
-        updated[key][teamKey] = {
+        updated[key][equipo.equipo_id] = {
           equipo: equipo,
           puntos: 0,
           position: 0,
@@ -183,16 +202,30 @@ export const useWebSocket = (): WebSocketHookReturn => {
   const handleResultUpdate = useCallback((result: CompetitionResult & { arbitroId?: string }) => {
     const key = `tarde_${result.categoria}`;
     const arbitroId = result.arbitroId || 'unknown';
-    const teamKey = `${result.equipo_id}_${arbitroId}`;
+    
+    // Verificar que el árbitro esté autorizado para esta categoría
+    const arbitroCategoria: { [key: string]: Categoria } = {
+      'arb1': 'sumo_rc',
+      'arb2': 'sumo_autonomo', 
+      'arb3': 'futbol_rc',
+      'arb4': 'velocitas',
+      'arb5': 'rally',
+      'arb6': 'barcos'
+    };
+    
+    if (arbitroCategoria[arbitroId] !== result.categoria) {
+      console.warn(`Árbitro ${arbitroId} no autorizado para categoría ${result.categoria}`);
+      return;
+    }
     
     setCompetitionData(prev => {
       const updated = { ...prev };
       
-      if (!updated[key] || !updated[key][teamKey]) {
+      if (!updated[key] || !updated[key][result.equipo_id]) {
         return prev; // Equipo no existe
       }
 
-      const teamData = { ...updated[key][teamKey] };
+      const teamData = { ...updated[key][result.equipo_id] };
 
       if ('puntos' in result) {
         // Resultado de puntos
@@ -212,7 +245,7 @@ export const useWebSocket = (): WebSocketHookReturn => {
         teamData.diferencia_gol = futbolResult.goles_favor - futbolResult.goles_contra;
       }
 
-      updated[key][teamKey] = teamData;
+      updated[key][result.equipo_id] = teamData;
       
       return updated;
     });
