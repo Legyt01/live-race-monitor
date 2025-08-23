@@ -1,53 +1,52 @@
 import { useState, useEffect } from 'react';
+import { ArbitroId, Categoria, CompetitionResult, TeamData } from '@/types/competition';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  Categoria, 
-  ArbitroId, 
-  CATEGORIAS, 
-  CompetitionResult, 
-  PuntosResult, 
-  FutbolResult, 
-  TiempoResult,
-  TIME_CATEGORIES
-} from '@/types/competition';
-import { Plus, Send, Users, Trophy, Edit3, Target, Clock, Award, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
+import { Trophy, Clock, Target, Users, Trash2, Plus, Send } from 'lucide-react';
+import { useArbitroData } from '@/hooks/useArbitroData';
 
-// Mapeo fijo de árbitros a categorías
-const ARBITRO_CATEGORIA_MAP: { [key in ArbitroId]: Categoria } = {
-  arb1: 'sumo_rc',
-  arb2: 'sumo_autonomo', 
-  arb3: 'futbol_rc',
-  arb4: 'velocitas',
-  arb5: 'rally',
-  arb6: 'barcos'
+// Fixed mapping of ArbitroId to Categoria
+const ARBITRO_CATEGORIA: { [key in ArbitroId]: Categoria } = {
+  'arb1': 'sumo_rc',
+  'arb2': 'sumo_autonomo',
+  'arb3': 'futbol_rc',
+  'arb4': 'velocitas',
+  'arb5': 'rally',
+  'arb6': 'barcos'
+};
+
+const CATEGORIAS: { [key: string]: string } = {
+  'sumo_rc': 'Sumo RC',
+  'sumo_autonomo': 'Sumo Autónomo',
+  'futbol_rc': 'Fútbol RC',
+  'velocitas': 'Velocitas',
+  'rally': 'Rally',
+  'barcos': 'Barcos RC'
 };
 
 interface ArbitroInterfaceProps {
   arbitroId: ArbitroId;
   publishRoster: (categoria: Categoria, equipos: { equipo_id: string; equipo_nombre: string }[], arbitroId?: string) => void;
   publishResult: (result: CompetitionResult, arbitroId?: string) => void;
-  getTeamsForCategory: (categoria: Categoria) => any[];
+  getTeamsForCategory: (categoria: Categoria) => TeamData[];
 }
 
-// Format time as min:sec
 const formatTime = (timeInSeconds: number): string => {
   const minutes = Math.floor(timeInSeconds / 60);
-  const seconds = (timeInSeconds % 60).toFixed(3);
-  return `${minutes}:${seconds.padStart(6, '0')}`;
+  const seconds = (timeInSeconds % 60).toFixed(2);
+  return `${minutes}:${seconds.padStart(5, '0')}`;
 };
 
-const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsForCategory }: ArbitroInterfaceProps) => {
-  // La categoría está fija según el árbitro
-  const categoria = ARBITRO_CATEGORIA_MAP[arbitroId];
-  const [equipos, setEquipos] = useState<{ equipo_id: string; equipo_nombre: string }[]>([]);
+const ArbitroInterface = ({ arbitroId, publishRoster, publishResult }: ArbitroInterfaceProps) => {
+  const categoria = ARBITRO_CATEGORIA[arbitroId];
+  const { equipos, results, addTeam, deleteTeam, saveResult } = useArbitroData(arbitroId);
+  
+  // Form states
   const [newTeamId, setNewTeamId] = useState('');
   const [newTeamName, setNewTeamName] = useState('');
   const [selectedTeam, setSelectedTeam] = useState('');
@@ -61,22 +60,14 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
   const [golesContra, setGolesContra] = useState('');
   const [tiempoS, setTiempoS] = useState('');
 
-  const { toast } = useToast();
-
-  // Load teams from localStorage for this category and arbitro
+  // Notify WebSocket system when teams change
   useEffect(() => {
-    const saved = localStorage.getItem(`teams_${categoria}_${arbitroId}`);
-    if (saved) {
-      const teams = JSON.parse(saved);
-      setEquipos(teams);
-      publishRoster(categoria, teams, arbitroId);
-      console.log(`Cargados ${teams.length} equipos para ${categoria} - ${arbitroId}`, teams);
-    } else {
-      console.log(`No hay equipos guardados para ${categoria} - ${arbitroId}`);
+    if (equipos.length > 0) {
+      publishRoster(categoria, equipos, arbitroId);
     }
-  }, [categoria, arbitroId, publishRoster]);
+  }, [equipos, categoria, arbitroId, publishRoster]);
 
-  const addTeam = () => {
+  const handleAddTeam = () => {
     if (!newTeamId.trim() || !newTeamName.trim()) {
       toast({
         title: "Error",
@@ -88,7 +79,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
 
     if (equipos.some(e => e.equipo_id === newTeamId.trim())) {
       toast({
-        title: "Error",
+        title: "Error", 
         description: "Ya existe un equipo con ese ID",
         variant: "destructive"
       });
@@ -100,15 +91,7 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
       equipo_nombre: newTeamName.trim()
     };
 
-    const updatedEquipos = [...equipos, newTeam];
-    setEquipos(updatedEquipos);
-    
-    // Save to localStorage with arbitro isolation
-    localStorage.setItem(`teams_${categoria}_${arbitroId}`, JSON.stringify(updatedEquipos));
-    
-    // Publish roster immediately
-    publishRoster(categoria, updatedEquipos, arbitroId);
-    
+    addTeam(newTeam);
     setNewTeamId('');
     setNewTeamName('');
     
@@ -118,28 +101,18 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
     });
   };
 
-  const deleteTeam = (teamId: string) => {
-    const teamToDelete = equipos.find(e => e.equipo_id === teamId);
-    if (!teamToDelete) return;
-
-    const updatedEquipos = equipos.filter(e => e.equipo_id !== teamId);
-    setEquipos(updatedEquipos);
-    
-    // Save to localStorage with arbitro isolation
-    localStorage.setItem(`teams_${categoria}_${arbitroId}`, JSON.stringify(updatedEquipos));
-    
-    // Publish updated roster
-    publishRoster(categoria, updatedEquipos, arbitroId);
-    
-    // Clear selection if deleted team was selected
-    if (selectedTeam === teamId) {
-      setSelectedTeam('');
+  const handleDeleteTeam = (equipoId: string) => {
+    const team = equipos.find(e => e.equipo_id === equipoId);
+    if (team) {
+      deleteTeam(equipoId);
+      if (selectedTeam === equipoId) {
+        setSelectedTeam('');
+      }
+      toast({
+        title: "Equipo eliminado",
+        description: `${team.equipo_nombre} eliminado exitosamente`
+      });
     }
-    
-    toast({
-      title: "Equipo eliminado",
-      description: `${teamToDelete.equipo_nombre} eliminado exitosamente`
-    });
   };
 
   const submitResult = () => {
@@ -154,351 +127,301 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
 
     let result: CompetitionResult;
 
-    try {
-      if (categoria === 'futbol_rc') {
-        if (!victorias || !empates || !derrotas || !golesFavor || !golesContra) {
-          throw new Error("Todos los campos de fútbol son obligatorios");
-        }
-        
-        result = {
-          categoria,
-          arbitro_id: arbitroId,
-          equipo_id: selectedTeam,
-          victorias: parseInt(victorias),
-          empates: parseInt(empates),
-          derrotas: parseInt(derrotas),
-          goles_favor: parseInt(golesFavor),
-          goles_contra: parseInt(golesContra)
-        } as FutbolResult;
-      } else if (TIME_CATEGORIES.includes(categoria)) {
-        if (!tiempoS) {
-          throw new Error("El tiempo es obligatorio");
-        }
-        
-        result = {
-          categoria,
-          arbitro_id: arbitroId,
-          equipo_id: selectedTeam,
-          tiempo_s: parseFloat(tiempoS)
-        } as TiempoResult;
-      } else {
-        if (!puntos) {
-          throw new Error("Los puntos son obligatorios");
-        }
-        
-        result = {
-          categoria,
-          arbitro_id: arbitroId,
-          equipo_id: selectedTeam,
-          puntos: parseInt(puntos)
-        } as PuntosResult;
+    if (categoria === 'futbol_rc') {
+      const v = parseInt(victorias) || 0;
+      const e = parseInt(empates) || 0;
+      const d = parseInt(derrotas) || 0;
+      const gf = parseInt(golesFavor) || 0;
+      const gc = parseInt(golesContra) || 0;
+
+      result = {
+        categoria,
+        arbitro_id: arbitroId,
+        equipo_id: selectedTeam,
+        victorias: v,
+        empates: e,
+        derrotas: d,
+        goles_favor: gf,
+        goles_contra: gc,
+      };
+    } else if (['velocitas', 'rally', 'barcos'].includes(categoria)) {
+      const tiempo = parseFloat(tiempoS);
+      if (isNaN(tiempo) || tiempo <= 0) {
+        toast({
+          title: "Error",
+          description: "Ingresa un tiempo válido",
+          variant: "destructive"
+        });
+        return;
       }
 
-      publishResult(result, arbitroId);
-      
-      // Clear form
-      setPuntos('');
-      setVictorias('');
-      setEmpates('');
-      setDerrotas('');
-      setGolesFavor('');
-      setGolesContra('');
-      setTiempoS('');
-      setSelectedTeam('');
-      
-      toast({
-        title: "Resultado enviado",
-        description: "El resultado se ha registrado exitosamente"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Error al enviar resultado",
-        variant: "destructive"
-      });
-    }
-  };
+      result = {
+        categoria,
+        arbitro_id: arbitroId,
+        equipo_id: selectedTeam,
+        tiempo_s: tiempo,
+      };
+    } else {
+      const pts = parseInt(puntos);
+      if (isNaN(pts) || pts < 0) {
+        toast({
+          title: "Error", 
+          description: "Ingresa puntos válidos",
+          variant: "destructive"
+        });
+        return;
+      }
 
-  // Get current teams and their results
-  const currentTeams = getTeamsForCategory(categoria);
-  const hasTeams = equipos.length > 0;
+      result = {
+        categoria,
+        arbitro_id: arbitroId,
+        equipo_id: selectedTeam,
+        puntos: pts,
+      };
+    }
+
+    saveResult(result);
+    publishResult(result, arbitroId);
+
+    // Clear form
+    setPuntos('');
+    setVictorias('');
+    setEmpates('');
+    setDerrotas('');
+    setGolesFavor('');
+    setGolesContra('');
+    setTiempoS('');
+    setSelectedTeam('');
+
+    toast({
+      title: "Resultado guardado",
+      description: "Resultado enviado exitosamente"
+    });
+  };
 
   const renderResultForm = () => {
     if (categoria === 'futbol_rc') {
       return (
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="victorias">Victorias</Label>
+            <label className="text-sm font-medium mb-2 block">Victorias</label>
             <Input
-              id="victorias"
               type="number"
               min="0"
               value={victorias}
               onChange={(e) => setVictorias(e.target.value)}
               placeholder="0"
-              className="bg-background"
             />
           </div>
           <div>
-            <Label htmlFor="empates">Empates</Label>
+            <label className="text-sm font-medium mb-2 block">Empates</label>
             <Input
-              id="empates"
               type="number"
               min="0"
               value={empates}
               onChange={(e) => setEmpates(e.target.value)}
               placeholder="0"
-              className="bg-background"
             />
           </div>
           <div>
-            <Label htmlFor="derrotas">Derrotas</Label>
+            <label className="text-sm font-medium mb-2 block">Derrotas</label>
             <Input
-              id="derrotas"
               type="number"
               min="0"
               value={derrotas}
               onChange={(e) => setDerrotas(e.target.value)}
               placeholder="0"
-              className="bg-background"
             />
           </div>
           <div>
-            <Label htmlFor="goles-favor">Goles a Favor</Label>
+            <label className="text-sm font-medium mb-2 block">Goles a favor</label>
             <Input
-              id="goles-favor"
               type="number"
               min="0"
               value={golesFavor}
               onChange={(e) => setGolesFavor(e.target.value)}
               placeholder="0"
-              className="bg-background"
             />
           </div>
-          <div className="col-span-2">
-            <Label htmlFor="goles-contra">Goles en Contra</Label>
+          <div>
+            <label className="text-sm font-medium mb-2 block">Goles en contra</label>
             <Input
-              id="goles-contra"
               type="number"
               min="0"
               value={golesContra}
               onChange={(e) => setGolesContra(e.target.value)}
               placeholder="0"
-              className="bg-background"
             />
           </div>
         </div>
       );
-    }
-    
-    if (TIME_CATEGORIES.includes(categoria)) {
+    } else if (['velocitas', 'rally', 'barcos'].includes(categoria)) {
       return (
         <div>
-          <Label htmlFor="tiempo" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Tiempo (segundos)
-          </Label>
+          <label className="text-sm font-medium mb-2 block">Tiempo (segundos)</label>
           <Input
-            id="tiempo"
             type="number"
             step="0.001"
             min="0"
             value={tiempoS}
             onChange={(e) => setTiempoS(e.target.value)}
             placeholder="0.000"
-            className="bg-background"
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            Se mostrará en formato min:seg
-          </p>
+        </div>
+      );
+    } else {
+      return (
+        <div>
+          <label className="text-sm font-medium mb-2 block">Puntos</label>
+          <Input
+            type="number"
+            min="0"
+            value={puntos}
+            onChange={(e) => setPuntos(e.target.value)}
+            placeholder="0"
+          />
         </div>
       );
     }
-    
-    return (
-      <div>
-        <Label htmlFor="puntos" className="flex items-center gap-2">
-          <Award className="h-4 w-4" />
-          Puntos
-        </Label>
-        <Input
-          id="puntos"
-          type="number"
-          min="0"
-          value={puntos}
-          onChange={(e) => setPuntos(e.target.value)}
-          placeholder="0"
-          className="bg-background"
-        />
-      </div>
-    );
   };
 
   const renderResultsTable = () => {
-    if (currentTeams.length === 0) return null;
-
-    const getColumns = () => {
-      switch (categoria) {
-        case 'futbol_rc':
-          return ['Equipo', 'V', 'E', 'D', 'GF', 'GC', 'PTS'];
-        case 'velocitas':
-        case 'rally':
-        case 'barcos':
-          return ['Equipo', 'Tiempo'];
-        default:
-          return ['Equipo', 'Puntos'];
-      }
-    };
-
-    const renderTableCell = (team: any, column: string) => {
-      switch (column) {
-        case 'Equipo':
-          return team.equipo?.equipo_nombre || team.equipo_id;
-        case 'V':
-          return team.victorias || 0;
-        case 'E':
-          return team.empates || 0;
-        case 'D':
-          return team.derrotas || 0;
-        case 'GF':
-          return team.goles_favor || 0;
-        case 'GC':
-          return team.goles_contra || 0;
-        case 'PTS':
-          return team.pts_calculados || 0;
-        case 'Tiempo':
-          return team.tiempo_s ? formatTime(team.tiempo_s) : '-';
-        case 'Puntos':
-          return team.puntos || 0;
-        default:
-          return '-';
-      }
-    };
+    if (results.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          No hay resultados aún
+        </div>
+      );
+    }
 
     return (
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-primary" />
-            Resultados Actuales - {CATEGORIAS[categoria]}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">#</TableHead>
-                {getColumns().map((column) => (
-                  <TableHead key={column} className="font-semibold">
-                    {column}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentTeams.map((team, index) => (
-                <TableRow key={team.equipo?.equipo_id || team.equipo_id}>
-                  <TableCell>
-                    <Badge variant="secondary" className="font-bold">
-                      {index + 1}
-                    </Badge>
-                  </TableCell>
-                  {getColumns().map((column) => (
-                    <TableCell key={column}>
-                      {renderTableCell(team, column)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Pos</TableHead>
+            <TableHead>Equipo</TableHead>
+            {categoria === 'futbol_rc' ? (
+              <>
+                <TableHead>V</TableHead>
+                <TableHead>E</TableHead>
+                <TableHead>D</TableHead>
+                <TableHead>GF</TableHead>
+                <TableHead>GC</TableHead>
+                <TableHead>Pts</TableHead>
+              </>
+            ) : ['velocitas', 'rally', 'barcos'].includes(categoria) ? (
+              <TableHead>Tiempo</TableHead>
+            ) : (
+              <TableHead>Puntos</TableHead>
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {results.map((team) => (
+            <TableRow key={team.equipo.equipo_id}>
+              <TableCell>
+                <Badge variant={team.position === 1 ? "default" : "secondary"}>
+                  {team.position}
+                </Badge>
+              </TableCell>
+              <TableCell className="font-medium">
+                {team.equipo.equipo_nombre}
+              </TableCell>
+              {categoria === 'futbol_rc' ? (
+                <>
+                  <TableCell>{team.victorias || 0}</TableCell>
+                  <TableCell>{team.empates || 0}</TableCell>
+                  <TableCell>{team.derrotas || 0}</TableCell>
+                  <TableCell>{team.goles_favor || 0}</TableCell>
+                  <TableCell>{team.goles_contra || 0}</TableCell>
+                  <TableCell className="font-bold">{team.pts_calculados || 0}</TableCell>
+                </>
+              ) : ['velocitas', 'rally', 'barcos'].includes(categoria) ? (
+                <TableCell className="font-bold">
+                  {team.tiempo_s ? formatTime(team.tiempo_s) : '-'}
+                </TableCell>
+              ) : (
+                <TableCell className="font-bold">{team.puntos || 0}</TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     );
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
-          <Users className="h-6 w-6 text-primary" />
-          {arbitroId.toUpperCase()} - {CATEGORIAS[categoria]}
-        </h2>
-        <p className="text-muted-foreground">Gestiona equipos y registra resultados en tiempo real</p>
-      </div>
+  const getCategoryIcon = () => {
+    switch (categoria) {
+      case 'futbol_rc':
+        return <Trophy className="h-5 w-5" />;
+      case 'velocitas':
+      case 'rally':
+      case 'barcos':
+        return <Clock className="h-5 w-5" />;
+      default:
+        return <Target className="h-5 w-5" />;
+    }
+  };
 
-      {/* Category Display */}
-      <Card className="bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
+  return (
+    <div className="space-y-6 p-6">
+      {/* Category Header */}
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-primary" />
-            Categoría Asignada
+            {getCategoryIcon()}
+            <span>Categoría: {CATEGORIAS[categoria]}</span>
+            <Badge variant="outline" className="ml-auto">
+              {arbitroId.toUpperCase()}
+            </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Badge variant="outline" className="w-fit border-primary text-primary text-lg px-4 py-2">
-            {CATEGORIAS[categoria]}
-          </Badge>
-        </CardContent>
       </Card>
 
       {/* Team Management */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-accent" />
-            Gestión de Equipos
+            <Users className="h-5 w-5" />
+            Gestión de Equipos ({equipos.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="team-id">ID del Equipo</Label>
-              <Input
-                id="team-id"
-                value={newTeamId}
-                onChange={(e) => setNewTeamId(e.target.value)}
-                placeholder="team-01"
-                className="bg-background"
-              />
-            </div>
-            <div>
-              <Label htmlFor="team-name">Nombre del Equipo</Label>
-              <Input
-                id="team-name"
-                value={newTeamName}
-                onChange={(e) => setNewTeamName(e.target.value)}
-                placeholder="Nombre del equipo"
-                className="bg-background"
-              />
-            </div>
-            <div className="flex items-end">
-              <Button 
-                onClick={addTeam} 
-                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar
-              </Button>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Input
+              placeholder="ID del equipo"
+              value={newTeamId}
+              onChange={(e) => setNewTeamId(e.target.value)}
+            />
+            <Input
+              placeholder="Nombre del equipo"
+              value={newTeamName}
+              onChange={(e) => setNewTeamName(e.target.value)}
+            />
+            <Button onClick={handleAddTeam} className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Agregar Equipo
+            </Button>
           </div>
           
-          {hasTeams && (
-            <div>
-              <Label>Equipos Registrados ({equipos.length})</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
+          {equipos.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium">Equipos registrados:</h4>
+              <div className="space-y-2">
                 {equipos.map((equipo) => (
-                  <div key={equipo.equipo_id} className="flex items-center gap-1">
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                      {equipo.equipo_nombre}
-                    </Badge>
+                  <div key={equipo.equipo_id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <span className="font-medium">{equipo.equipo_nombre}</span>
+                      <span className="text-sm text-muted-foreground ml-2">
+                        (ID: {equipo.equipo_id})
+                      </span>
+                    </div>
                     <Button
+                      variant="destructive"
                       size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-                      onClick={() => deleteTeam(equipo.equipo_id)}
+                      onClick={() => handleDeleteTeam(equipo.equipo_id)}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
@@ -508,58 +431,54 @@ const ArbitroInterface = ({ arbitroId, publishRoster, publishResult, getTeamsFor
         </CardContent>
       </Card>
 
-      {/* Results Submission - Always visible */}
-      <Card className="bg-gradient-to-br from-accent/5 to-secondary/5 border-accent/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Edit3 className="h-5 w-5 text-accent" />
-            Registrar Resultados
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {!hasTeams ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">Primero agrega equipos</p>
-              <p className="text-sm">Necesitas registrar al menos un equipo para poder agregar resultados</p>
+      {/* Results Submission */}
+      {equipos.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5" />
+              Enviar Resultados
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Seleccionar Equipo</label>
+              <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un equipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {equipos.map((equipo) => (
+                    <SelectItem key={equipo.equipo_id} value={equipo.equipo_id}>
+                      {equipo.equipo_nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          ) : (
-            <>
-              <div>
-                <Label htmlFor="team-select">Seleccionar Equipo</Label>
-                <Select value={selectedTeam} onValueChange={setSelectedTeam}>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Selecciona un equipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {equipos.map((equipo) => (
-                      <SelectItem key={equipo.equipo_id} value={equipo.equipo_id}>
-                        {equipo.equipo_nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <Separator />
-              
-              {renderResultForm()}
-              
-              <Button 
-                onClick={submitResult} 
-                className="w-full bg-gradient-to-r from-accent to-primary hover:opacity-90"
-                size="lg"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Enviar Resultado
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
+
+            {renderResultForm()}
+
+            <Button onClick={submitResult} className="w-full" disabled={!selectedTeam}>
+              <Send className="h-4 w-4 mr-2" />
+              Enviar Resultado
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Results Table */}
-      {renderResultsTable()}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5" />
+            Resultados Actuales
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {renderResultsTable()}
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -104,59 +104,49 @@ export const useWebSocket = (): WebSocketHookReturn => {
     } catch (error) {
       console.error('Error creando WebSocket:', error);
       setConnectionStatus('error');
-      
-      // Fallback a datos locales si no hay servidor WebSocket
-      loadLocalData();
     }
   }, []);
 
   const loadLocalData = useCallback(() => {
-    // Cargar datos desde localStorage como fallback
+    // Cargar datos desde localStorage combinando todos los árbitros
     const categories: Categoria[] = ['sumo_rc', 'sumo_autonomo', 'futbol_rc', 'velocitas', 'rally', 'barcos'];
-    const arbitroCategoria: { [key: string]: Categoria } = {
-      'arb1': 'sumo_rc',
-      'arb2': 'sumo_autonomo', 
-      'arb3': 'futbol_rc',
-      'arb4': 'velocitas',
-      'arb5': 'rally',
-      'arb6': 'barcos'
-    };
+    const arbitroIds = ['arb1', 'arb2', 'arb3', 'arb4', 'arb5', 'arb6'];
     const localData: CompetitionData = {};
 
     categories.forEach(categoria => {
       const key = `tarde_${categoria}`;
       localData[key] = {};
       
-      // Buscar datos SOLO del árbitro asignado a esta categoría
-      const arbitroAsignado = Object.keys(arbitroCategoria).find(arb => arbitroCategoria[arb] === categoria);
-      
-      if (arbitroAsignado) {
-        const teamsData = localStorage.getItem(`teams_${categoria}_${arbitroAsignado}`);
-        const resultsData = localStorage.getItem(`results_${categoria}_${arbitroAsignado}`);
+      // Cargar equipos de TODOS los árbitros para esta categoría
+      arbitroIds.forEach(arbitroId => {
+        const teamsData = localStorage.getItem(`teams_${categoria}_${arbitroId}`);
+        const resultsData = localStorage.getItem(`results_${categoria}_${arbitroId}`);
         
         if (teamsData) {
           const teams = JSON.parse(teamsData);
           const results = resultsData ? JSON.parse(resultsData) : {};
           
-          // Agregar equipos de este árbitro específico
+          // Agregar equipos de este árbitro
           teams.forEach((team: any) => {
-            localData[key][team.equipo_id] = {
+            localData[key][`${team.equipo_id}_${arbitroId}`] = {
               equipo: team,
               puntos: 0,
               position: 0,
+              arbitroId,
               ...results[team.equipo_id] // Aplicar resultados si existen
             };
           });
         }
-      }
+      });
     });
 
     setCompetitionData(localData);
-    console.log('Datos locales cargados por árbitro específico:', localData);
+    console.log('Datos locales cargados de todos los árbitros:', localData);
   }, []);
 
-  const handleRosterMessage = useCallback((message: RosterMessage) => {
+  const handleRosterMessage = useCallback((message: RosterMessage & { arbitroId?: string }) => {
     const key = `tarde_${message.categoria}`;
+    const arbitroId = message.arbitroId || 'unknown';
     
     setCompetitionData(prev => {
       const updated = { ...prev };
@@ -165,25 +155,22 @@ export const useWebSocket = (): WebSocketHookReturn => {
         updated[key] = {};
       }
 
-      // Mantener datos existentes pero actualizar estructura de equipos
-      message.equipos.forEach(equipo => {
-        if (!updated[key][equipo.equipo_id]) {
-          updated[key][equipo.equipo_id] = {
-            equipo,
-            puntos: 0,
-            position: 0
-          };
-        } else {
-          updated[key][equipo.equipo_id].equipo = equipo;
+      // Limpiar equipos existentes de este árbitro específico
+      Object.keys(updated[key]).forEach(teamKey => {
+        if (teamKey.endsWith(`_${arbitroId}`)) {
+          delete updated[key][teamKey];
         }
       });
 
-      // Remover equipos que ya no están en la lista
-      const currentTeamIds = message.equipos.map(e => e.equipo_id);
-      Object.keys(updated[key]).forEach(teamId => {
-        if (!currentTeamIds.includes(teamId)) {
-          delete updated[key][teamId];
-        }
+      // Agregar nuevos equipos de este árbitro
+      message.equipos.forEach(equipo => {
+        const teamKey = `${equipo.equipo_id}_${arbitroId}`;
+        updated[key][teamKey] = {
+          equipo: equipo,
+          puntos: 0,
+          position: 0,
+          arbitroId
+        };
       });
 
       return updated;
@@ -193,17 +180,19 @@ export const useWebSocket = (): WebSocketHookReturn => {
     setUpdateTrigger(prev => prev + 1);
   }, []);
 
-  const handleResultUpdate = useCallback((result: CompetitionResult) => {
+  const handleResultUpdate = useCallback((result: CompetitionResult & { arbitroId?: string }) => {
     const key = `tarde_${result.categoria}`;
+    const arbitroId = result.arbitroId || 'unknown';
+    const teamKey = `${result.equipo_id}_${arbitroId}`;
     
     setCompetitionData(prev => {
       const updated = { ...prev };
       
-      if (!updated[key] || !updated[key][result.equipo_id]) {
+      if (!updated[key] || !updated[key][teamKey]) {
         return prev; // Equipo no existe
       }
 
-      const teamData = { ...updated[key][result.equipo_id] };
+      const teamData = { ...updated[key][teamKey] };
 
       if ('puntos' in result) {
         // Resultado de puntos
@@ -223,7 +212,7 @@ export const useWebSocket = (): WebSocketHookReturn => {
         teamData.diferencia_gol = futbolResult.goles_favor - futbolResult.goles_contra;
       }
 
-      updated[key][result.equipo_id] = teamData;
+      updated[key][teamKey] = teamData;
       
       return updated;
     });
@@ -233,7 +222,7 @@ export const useWebSocket = (): WebSocketHookReturn => {
   }, []);
 
   const publishRoster = useCallback((categoria: Categoria, equipos: { equipo_id: string; equipo_nombre: string }[], arbitroId?: string) => {
-    const message: RosterMessage = { categoria, equipos };
+    const message = { categoria, equipos, arbitroId };
     
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'roster', ...message }));
@@ -242,19 +231,21 @@ export const useWebSocket = (): WebSocketHookReturn => {
     // También actualizar localmente
     handleRosterMessage(message);
     
-    // Guardar en localStorage SOLO con ID de árbitro para mantener separación
+    // Guardar en localStorage con ID de árbitro para mantener separación
     if (arbitroId) {
       localStorage.setItem(`teams_${categoria}_${arbitroId}`, JSON.stringify(equipos));
     }
   }, [handleRosterMessage]);
 
   const publishResult = useCallback((result: CompetitionResult, arbitroId?: string) => {
+    const resultWithArbitro = { ...result, arbitroId };
+    
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'result', ...result }));
+      wsRef.current.send(JSON.stringify({ type: 'result', ...resultWithArbitro }));
     }
     
     // También actualizar localmente
-    handleResultUpdate(result);
+    handleResultUpdate(resultWithArbitro);
     
     // Guardar resultado específico del árbitro
     if (arbitroId) {
@@ -277,8 +268,13 @@ export const useWebSocket = (): WebSocketHookReturn => {
     // Cargar datos locales inmediatamente
     loadLocalData();
     
-    // Conectar WebSocket después
+    // Intentar conectar WebSocket pero no depender de él
     connect();
+
+    // Configurar polling para actualización automática cada 5 segundos
+    const pollingInterval = setInterval(() => {
+      loadLocalData();
+    }, 5000);
 
     return () => {
       if (reconnectTimeoutRef.current) {
@@ -287,6 +283,7 @@ export const useWebSocket = (): WebSocketHookReturn => {
       if (wsRef.current) {
         wsRef.current.close();
       }
+      clearInterval(pollingInterval);
     };
   }, []);
 

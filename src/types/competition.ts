@@ -48,6 +48,7 @@ export interface TeamData {
   pts_calculados?: number;
   diferencia_gol?: number;
   position?: number;
+  arbitroId?: string;
 }
 
 export interface CategoryData {
