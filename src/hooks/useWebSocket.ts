@@ -150,6 +150,7 @@ export const useWebSocket = (): WebSocketHookReturn => {
     });
 
     setCompetitionData(localData);
+    setUpdateTrigger(prev => prev + 1); // Forzar actualización de pantalla central
     console.log('Datos locales cargados por categoría específica:', localData);
   }, []);
 
@@ -304,10 +305,10 @@ export const useWebSocket = (): WebSocketHookReturn => {
     // Intentar conectar WebSocket pero no depender de él
     connect();
 
-    // Configurar polling para actualización automática cada 5 segundos
+    // Configurar polling para actualización automática cada 2 segundos
     const pollingInterval = setInterval(() => {
       loadLocalData();
-    }, 5000);
+    }, 2000);
 
     return () => {
       if (reconnectTimeoutRef.current) {
