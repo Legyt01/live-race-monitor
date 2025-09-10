@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { CompetitionData, CategoryData, TeamData, Categoria, RosterMessage, CompetitionResult, FutbolResult, TiempoResult, PuntosResult, CONFIG } from '@/types/competition';
+import { CompetitionData, CategoryData, TeamData, Categoria, RosterMessage, CompetitionResult, FutbolResult, TiempoResult, PuntosResult, CONFIG, ArbitroId } from '@/types/competition';
+import { useMQTTReal } from './useMQTTReal';
 
 interface WebSocketHookReturn {
   competitionData: CompetitionData;
@@ -7,6 +8,11 @@ interface WebSocketHookReturn {
   publishRoster: (categoria: Categoria, equipos: { equipo_id: string; equipo_nombre: string }[], arbitroId?: string) => void;
   publishResult: (result: CompetitionResult, arbitroId?: string) => void;
   getTeamsForCategory: (categoria: Categoria) => TeamData[];
+  // MQTT específico para velocitas y rally
+  mqttConnectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  isMQTTConfigured: boolean;
+  configureMQTT: (config: { brokerUrl: string; username?: string; password?: string; clientId?: string; }) => void;
+  disconnectMQTT: () => void;
 }
 
 // WebSocket server URL - cambiar según configuración
@@ -21,6 +27,25 @@ export const useWebSocket = (): WebSocketHookReturn => {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
+
+  // MQTT para velocitas y rally
+  const {
+    connectionStatus: mqttConnectionStatus,
+    publishResult: mqttPublishResult,
+    publishRoster: mqttPublishRoster,
+    isConfigured: isMQTTConfigured,
+    configure: configureMQTT,
+    disconnect: disconnectMQTT
+  } = useMQTTReal(
+    // Callback para resultados recibidos por MQTT
+    (result: TiempoResult) => {
+      handleResultUpdate({ ...result, arbitroId: result.arbitro_id });
+    },
+    // Callback para roster recibido por MQTT
+    (message: RosterMessage & { arbitroId: ArbitroId }) => {
+      handleRosterMessage(message);
+    }
+  );
 
   const calculateFutbolPoints = (victorias: number, empates: number, derrotas: number): number => {
     return victorias * CONFIG.FUTBOL_WIN_POINTS + empates * CONFIG.FUTBOL_DRAW_POINTS + derrotas * CONFIG.FUTBOL_LOSS_POINTS;
@@ -258,23 +283,30 @@ export const useWebSocket = (): WebSocketHookReturn => {
   const publishRoster = useCallback((categoria: Categoria, equipos: { equipo_id: string; equipo_nombre: string }[], arbitroId?: string) => {
     const message = { categoria, equipos, arbitroId };
     
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    // Si es velocitas o rally y MQTT está configurado, usar MQTT
+    if ((categoria === 'velocitas' || categoria === 'rally') && isMQTTConfigured && arbitroId) {
+      mqttPublishRoster(categoria, equipos, arbitroId as ArbitroId);
+    } else if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'roster', ...message }));
     }
     
     // También actualizar localmente
     handleRosterMessage(message);
     
-    // Guardar en localStorage con ID de árbitro para mantener separación
+    // Guardar en localStorage con ID de árbitro para mantener separación  
     if (arbitroId) {
       localStorage.setItem(`teams_${categoria}_${arbitroId}`, JSON.stringify(equipos));
     }
-  }, [handleRosterMessage]);
+  }, [handleRosterMessage, isMQTTConfigured, mqttPublishRoster]);
 
   const publishResult = useCallback((result: CompetitionResult, arbitroId?: string) => {
     const resultWithArbitro = { ...result, arbitroId };
     
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    // Si es velocitas o rally y MQTT está configurado, usar MQTT
+    if ((result.categoria === 'velocitas' || result.categoria === 'rally') && 
+        isMQTTConfigured && 'tiempo_s' in result) {
+      mqttPublishResult(result as TiempoResult);
+    } else if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'result', ...resultWithArbitro }));
     }
     
@@ -289,7 +321,7 @@ export const useWebSocket = (): WebSocketHookReturn => {
       results[result.equipo_id] = result;
       localStorage.setItem(`results_${result.categoria}_${arbitroId}`, JSON.stringify(results));
     }
-  }, [handleResultUpdate]);
+  }, [handleResultUpdate, isMQTTConfigured, mqttPublishResult]);
 
   const getTeamsForCategory = useCallback((categoria: Categoria): TeamData[] => {
     const key = `tarde_${categoria}`;
@@ -326,6 +358,11 @@ export const useWebSocket = (): WebSocketHookReturn => {
     connectionStatus,
     publishRoster,
     publishResult,
-    getTeamsForCategory
+    getTeamsForCategory,
+    // MQTT específico
+    mqttConnectionStatus,
+    isMQTTConfigured,
+    configureMQTT,
+    disconnectMQTT
   };
 };
